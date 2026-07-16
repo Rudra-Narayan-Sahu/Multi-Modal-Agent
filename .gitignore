@@ -33,6 +33,8 @@ venv/
 ENV/
 env/
 .venv
+myenv312
+
 
 # IDE
 .vscode/
