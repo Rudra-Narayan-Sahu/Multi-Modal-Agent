@@ -5,7 +5,7 @@ import logfire
 from app.config import settings
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
-from app.services.retrival.embedding import embed_batch, get_embedding_dim
+from app.services.retrieval.embedding import embed_texts, get_embedding_dim
 from app.ingestion.loaders.html import parse_html
 from app.ingestion.loaders.text import parse_text
 from app.ingestion.loaders.pdf import parse_pdf 
@@ -57,7 +57,7 @@ def process_file(file_path:str,file_name:str,source_type:str,source_name:str)->N
         saved_file_path=save_data_locally(data,source_type,source_name)
         
         # Embedding the text
-        embeddings=embed_batch([text])
+        embeddings=embed_texts([text])
         
         # Saving to Qdrant
         client.upsert(

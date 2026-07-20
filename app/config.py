@@ -12,6 +12,7 @@ class Settings:
     QDRANT_URL = os.getenv("QDRANT_CLUSTER_ENDPOINT")
     QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
     QDRANT_COLLECTION = "enterprise_rag"
+    QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", QDRANT_COLLECTION)
 
     # --- REASONING ENGINE (GROQ) ---
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
