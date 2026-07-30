@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
-    # --- GEMINI EMBEDDINGS ---
+    # --- EMBEDDINGS (GEMINI & HUGGINGFACE) ---
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    HF_TOKEN = os.getenv("HF_TOKEN")
 
     # --- VECTOR DB (QDRANT) ---
     QDRANT_URL = os.getenv("QDRANT_CLUSTER_ENDPOINT")
@@ -26,6 +27,7 @@ class Settings:
 
     
     # --- OBSERVABILITY ---
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LANGSMITH_TRACING = os.getenv("LANGSMITH_TRACING", "true")
     LANGSMITH_API_KEY = os.getenv("LANGSMITH_API_KEY")
     LANGSMITH_PROJECT = os.getenv("LANGSMITH_PROJECT", "rag_scale_test")
