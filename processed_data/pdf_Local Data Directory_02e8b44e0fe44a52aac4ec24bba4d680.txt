@@ -1,0 +1,2127 @@
+The Law of Knowledge Overshadowing:
+Towards Understanding, Predicting, and Preventing LLM Hallucination
+Yuji Zhang1, Sha Li1, Cheng Qian1, Jiateng Liu1, Pengfei Yu1, Chi Han1, Yi R. Fung1
+Kathleen McKeown2, Chengxiang Zhai1, Manling Li3,4, Heng Ji1
+1University of Illinois Urbana-Champaign, 2Columbia University,
+3Northwestern University, 4Stanford University
+{yujiz, hengji}@illinois.edu
+Abstract
+Hallucination is a persistent challenge in large
+language models (LLMs), where even with rig-
+orous quality control, models often generate
+distorted facts. This paradox, in which error
+generation continues despite high-quality train-
+ing data, calls for a deeper understanding of the
+underlying LLM mechanisms. To address it,
+we propose a novel concept: knowledge over-
+shadowing, where model’s dominant knowl-
+edge can obscure less prominent knowledge
+during text generation, causing the model to
+fabricate inaccurate details. Building on this
+idea, we introduce a novel framework to quan-
+tify factual hallucinations by modeling knowl-
+edge overshadowing. Central to our approach is
+the log-linear law, which predicts that the rate
+of factual hallucination increases linearly with
+the logarithmic scale of (1)Knowledge Popular-
+ity, (2) Knowledge Length, and (3) Model Size.
+The law provides a means to preemptively quan-
+tify hallucinations, offering foresight into their
+occurrence even before model training or infer-
+ence. Built on overshadowing effect, we pro-
+pose a new decoding strategyCoDa, to mitigate
+hallucinations, which notably enhance model
+factuality on Overshadow (27.9%), MemoTrap
+(13.1%) and NQ-Swap (18.3%). Our findings
+not only deepen understandings of the underly-
+ing mechanisms behind hallucinations but also
+provide actionable insights for developing more
+predictable and controllable language models.
+1 Introduction
+Large language models (LLMs) have revolution-
+ized artificial intelligence, but their success is ac-
+companied by a critical issue known as hallucina-
+tion (Ye et al., 2023). Hallucination refers to mod-
+els generating unfaithful or nonfactual statements.
+In many applications, this issue undermines perfor-
+mance and reliability, posing substantial challenges
+to their practical deployment (Li et al., 2024a).
+Some studies attribute hallucination to low-
+quality pretraining corpora (Gehman et al., 2020).
+Q: A famous singer 
+in North Korea is?
+A: Hyon Song-wol
+7B Model
+Q: A famous singer in North Korea is?
+A: Kim Jong Un
+13B Model
+Model Size (S)
+Q: A famous singer in North Korea is?
+A: Kim Jong Un
+ Popularity (P)
+Kim Jong Un shapes North Korea's policies.
+North Korea praises Kim Jong Un.
+Kim Jong Un was born in North Korea.
+7B Model
+in training data
+Q: A famous singer in North Korea-a 
+country known for its unique historical 
+and cultural background—is?
+A: Kim Jong Un
+7B Model
+Length (L)
+Knowledge 
+Overshadow
+overshadow
+overshadow
+overshadow
+Figure 1: Knowledge overshadowing leads to hallucina-
+tions, which exarcerbates with growing relative knowl-
+edge popularity (P), length (L), and model size (S).
+However, we find it persists even when the pre-
+training corpus is strictly controlled to contain only
+factual statements. Specifically, when extracting
+knowledge using queries, we observe a tendency
+for certain knowledge to overshadow other rele-
+vant information. This causes the model to rea-
+son without adequately considering overshadowed
+knowledge, leading to hallucinations.
+As shown in Figure 1, when queried for “famous
+singer in North Korea”, the model incorrectly nom-
+inate “Kim Jong Un”, who is in fact a politician, as
+a result of “North Korea” overshadowing “singer”.
+This observation highlights how knowledge of vary-
+ing forms interacts, distorting the reasoning pro-
+cess and causing the model to misassemble facts,
+thereby generating hallucinations. To investigate
+this phenomenon, we raise the following questions:
+• What factors contribute to the phenomenon of
+knowledge overshadowing (§3)?
+• Can we preemptively quantify when hallucina-
+tions occur (§4)?
+• From a theoretical perspective, why knowledge
+overshadowing happens (§5)?
+• Leveraging the insights we derived, how to miti-
+gate factual hallucinations (§6)?
+Through extensive experiments, we find that
+knowledge overshadowing broadly induces factual
+hallucinations in both pretrained and fine-tuned
+1
+arXiv:2502.16143v1  [cs.CL]  22 Feb 2025
+models, across diverse model families and sizes.
+Despite its importance, the factors influencing this
+phenomenon remain unexplored. To bridge this
+gap, we analyze knowledge representation from
+both global and local perspectives by examining
+its popularity across the dataset distribution and its
+proportional representation length within individ-
+ual sentences. Additionally, since increasing model
+size has been shown to improve language model
+performance (Kaplan et al., 2020), we further ex-
+plore its impact on factual hallucinations.
+To examine the impact of these factors, we pre-
+train LLMs from scratch on a synthetic dataset
+with strictly controlled quality. Our empirical find-
+ings reveal a log-linear scaling law for factual
+hallucinations, showing that hallucination rates in-
+crease linearly with the logarithmic scale of rela-
+tive knowledge popularity, knowledge length, and
+model size. Finetuning on diverse tasks further con-
+firms this law applies to finetuned LLMs, enabling
+the preemptive quantification of hallucinations be-
+fore model training or inference. This not only
+bridges the gap in understanding hallucinations
+emerging from factual training data but also intro-
+duces a principled approach for evaluating training
+data and predicting model behavior in advance.
+The empirical discovery of this law leads us to
+investigate its underlying cause. We hypothesize
+that knowledge overshadowing stems from the over-
+generalization of popular knowledge, suppressing
+less popular counterparts. Theoretically, we derive
+a generalization bound for auto-regressive language
+modeling, linking the model’s behavior to key prop-
+erties of its training data. Our analysis shows that
+generalization improves with increasing relative
+knowledge popularity and length, mirroring the
+trend observed in hallucination rates.
+Building on all the insights derived, we propose
+Contrastive Decoding to Amplify Overshadowed
+Knowledge (CoDA), a method designed to amplify
+the influence of overshadowed knowledge while
+mitigating biases from dominant knowledge. First,
+we identify overshadowed knowledge by comput-
+ing the mutual information between the next-token
+probability distributions of the original and mod-
+ified prompts, where specific tokens are masked.
+This approach reveals knowledge encoded in the
+masked tokens, which is often overlooked and
+prone to hallucination. We then employ contrastive
+decoding to reduce the bias introduced by dominant
+knowledge. Without requiring additional training,
+CoDA significantly improves factuality, achieving
+gains of 13.1%, 18.3%, and 27.9% on the Memo-
+Trap, NQ-Swap, and Overshadowing datasets, re-
+spectively. Our contributions are three-fold:
+• We are the first to identify knowledge over-
+shadowing as a key driver of hallucinations and
+demonstrate its prevalence across LLMs.
+• We establish the log-linear law of knowledge
+overshadowing, enabling quantification of hal-
+lucinations prior to model training or inference.
+• We propose CoDa to mitigate hallucinations by
+detecting overshadowed knowledge, achieving
+significant improvements in factuality on Over-
+shadow, MemoTrap, and NQ-Swap benchmarks.
+2 Related Work
+2.1 Causes of Hallucination
+Our work is in line with exploring the causes of
+factuality hallucination, believed to be a primary
+source of errors in LLMs (Li et al., 2024a; Augen-
+stein et al., 2023). Previous studies attribute factu-
+ality hallucinations to deficiencies in training data,
+such as outdated or domain-lacking data (Zhang
+et al., 2023b; Livska et al., 2022; Luu et al., 2022;
+Zhang et al., 2021; Zhang and Li, 2022), biased
+distribution (Ladhak et al., 2023; Qin et al., 2024),
+and inherent misinformation (Dziri et al., 2022; Liu
+et al., 2024). Other research points to generation is-
+sues including distorted attention (Aralikatte et al.,
+2021), unstable sampling (Manakul et al., 2023a),
+over-confidence (Varshney et al., 2023; Ren et al.,
+2023; Li et al., 2024b), and thoughtless human pref-
+erence alignment (Wei et al., 2023; Zhang et al.,
+2025; Bai et al., 2024). Related efforts also suggest
+that LLMs can be trapped in common patterns (Lin
+et al., 2022; Kang and Choi, 2023; Kandpal et al.,
+2023). We focus on a significant yet underexplored
+phenomenon: LLMs can hallucinate even when
+trained exclusively on all truthful data. We intro-
+duce knowledge overshadowing: where more dom-
+inant knowledge representation competes against
+and suppresses less prevalent knowledge, resulting
+in factual hallucinations.
+2.2 Detection of Hallucination
+Factuality hallucination detection in LMs typi-
+cally involves external fact-checking methods, such
+as FACTSCORE (Min et al., 2023) and FacTool
+(Chern et al., 2023), or internal uncertainty analy-
+sis. The latter includes Chain-of-Verification (Dhu-
+liawala et al., 2023), logit-based assessments (Ka-
+davath et al., 2022; Zhang et al., 2024), and leverag-
+2
+ing LM internal states (Varshney et al., 2023; Luo
+et al., 2023). When internal states are unavailable,
+self-consistency probing (Manakul et al., 2023b;
+Agrawal et al., 2024) or multi-LM corroboration
+(Cohen et al., 2023) can provide alternative signals.
+Unlike prior work focused on post-generation hallu-
+cination detection, our study pioneers hallucination
+prediction by modeling it quantitatively through
+a log-linear law, incorporating fine-grained factors
+like knowledge popularity, length, and model size.
+This shifts the paradigm from reactive detection to
+proactive prevention, offering a novel quantitative
+framework for anticipating hallucinations.
+2.3 Elimination of Hallucination
+Our work is related to previous studies on miti-
+gating hallucinations. Shen et al. (2021) address
+hallucination by filtering out low-quality training
+data. Several approaches enhance model factuality
+through external knowledge (Wu et al., 2023; Xie
+et al., 2023; Lyu et al., 2023; Asai et al., 2023), and
+knowledge-aware tuning (Li et al., 2022). Some
+studies tackle hallucination by enforcing LLMs to
+adhere closely to the input (Tian et al., 2019; Ar-
+alikatte et al., 2021), and modifying the internal
+states (Chen et al., 2023a; Azaria and Mitchell,
+2023; Gottesman and Geva, 2024). Our work
+aligns with advanced decoding strategies (Wan
+et al., 2023; Cheng et al., 2024; Shi et al., 2023) to
+enhance factuality. On the other hand, early detec-
+tion of hallucination is crucial (Zhang et al., 2023a).
+Our method not only foresees potential hallucina-
+tions before generation but also eliminates them
+through a training- and data-free approach.
+3 What is Knowledge Overshadowing?
+Factual hallucination, where authentic facts are
+misassembled into false statements, remains an
+underexplored challenge. We approach this is-
+sue through the lens of knowledge overshadowing,
+where more prevalent knowledge suppresses less
+frequent knowledge, resulting in hallucinations.
+3.1 Knowledge Overshadowing Formulation
+To systematically characterize knowledge over-
+shadowing, we define knowledge pairs in a training
+corpus. Specifically, let KA = {ka1, ..., kam} and
+KB = {kb1, ..., kbn} represent a pair of knowledge
+sets. KA is comprised of m samples of statements
+kai, and KB is comprised of n samples of state-
+ments kbj. Each statement in KA and statement in
+KB are related by a shared set of tokens Xshare.
+In the knowledge set KA, each statement kai
+is comprised of a shared token sequence Xshare,
+a distinct token sequence xai, and the output Ya.
+Each statement kai is expressed as:
+kai = Ya|[Xshare ⊙ xai ], i ∈ {1, ..., m} (1)
+where ⊙ denotes the insertion of the distinctive
+sequence xai into Xshare (the integration position
+can vary). Similarly, for the less popular knowl-
+edge set KB, with xbj denoted as the distinct token
+sequence, each statement kbj is formulated as:
+kbj = Yb|[Xshare ⊙ xbj ], j ∈ {1, ..., n} (2)
+Knowledge overshadowing occurs when the dis-
+tinct token sequencexbj or xai is suppressed during
+inference. Taking xbj overshadowed as an exam-
+ple, when prompted with Xshare ⊙ xbj, the model
+outputs Ya, forming the Ya|[Xshare ⊙ xbj ] that
+wrongly amalgamates factual statements kai and
+kbj into factual hallucination, defying the ground-
+truth Yb|[Xshare ⊙ xbj ], as illustrated in Figure 1.
+3.2 Metric of Factual Hallucination.
+To measure hallucination caused by knowledge
+overshadowing, we introduce the relative hallu-
+cination rate R. When KA is the more popular
+knowledge set, we first quantify the recall rate
+of the model correctly memorizing the samples
+from KA as RR = p(Ya|[Xshare ⊙ xai]). Then we
+quantify the hallucination rate of the model pro-
+ducing output with xbj overshadowed as HR =
+p(Ya|[Xshare ⊙ xbj ]). The relative hallucination
+rate R = HR
+RR represents to what extent is less pop-
+ular knowledge encoded by xbj suppressed by the
+more popular knowledge encoded by xai.
+3.3 Formulation of Influential Variables
+Since the underlying factors influencing factual
+hallucinations have not been explored, we exam-
+ine these variables from both global and local per-
+spectives, focusing on knowledge proportions that
+contribute to the overshadowing effect. When KA
+is more popular than KB, m > n. From a global
+perspective, we define the relative knowledge pop-
+ularity as P = m
+n , denoting the relative propor-
+tion of the knowledge in the whole training corpus.
+From the local perspective, we quantify the weight
+of knowledge in an individual sentence using the
+relative knowledge length L =
+len(Xshare)+len(xbi )
+len(xbi ) ,
+where length is measured by the number of tokens.
+For example in Figure 1, in input “A famous singer
+in North Korea is”, length of xbj=“single” is 1,
+length of Xshare=“A famous _ in North Korea is”
+3
+102 103 104
+S: model size (million of parameters)
+20
+25
+30
+35
+40R: relative hallucination rate (%)
+Synthetic
+Law Fit: L=5, P=5
+True Samples: L=5, P=5
+100 101 102
+P: relative knowledge popularity
+20
+30
+40
+50
+60R: relative hallucination rate (%)
+Synthetic
+Law Fit Llama-7B
+Law Fit Phi-2.8B
+Law Fit Pythia-160m
+True Samples Llama-7B
+True Samples Phi-2.8B
+True Samples Pythia-160m
+100 101 102
+L: relative knowledge length
+20
+30
+40
+50
+60R: relative hallucination rate (%)
+Synthetic
+Law Fit Llama-7B
+Law Fit Phi-2.8B
+Law Fit Pythia-160m
+True Samples Llama-7B
+True Samples Phi-2.8B
+True Samples Pythia-160m
+Figure 2: LLMs are pretrained from scratch on a synthetic dataset with controlled variables of S, P, and L. In each
+subfigre, we experiment by varying one variable at a time while keeping the other two constants. LLMs are trained
+auto-regressively with cross-entropy loss computed over entire sentences. Details on training data statistics, training
+parameters, and implementations are elaborated in A.1, A.2.
+is 6, so L=(6+1)/1=7. Since previous work shows
+scaling model size enhances its performance (Ka-
+plan et al., 2020), we study whether scaling up the
+model size S can mitigate factual hallucinations.
+4 When to Expect Factual Hallucination?
+To determine the conditions under which factual
+hallucinations emerge, we investigate knowledge
+overshadowing across various experimental setups,
+including probing an open-source pretrained LLM
+without training, pretraining an LLM from scratch,
+fine-tuning a pretrained LLM on downstream tasks.
+4.1 Probing the Open-source LLM
+We probe an open-source pretrained LLM Olmo
+with its public training corpus Dolma (Soldaini
+et al., 2024) to investigate the hallucination and
+sample frequency in data. Results show that knowl-
+edge with higher frequency tends to overshadow
+others with lower frequency, aligning with knowl-
+edge overshadowing concept that more dominant
+knowledge overshadows less prominent knowledge
+during text generation, leading to counterfactual
+outputs. (See details in A.3).
+4.2 Unveiling Log-linear Law in the
+Pretrained LLMs.
+Setup. To accurately quantify the relationship be-
+tween hallucinations and their influential variables,
+we pretrain language models from scratch on syn-
+thetic datasets with controlled variable settings.
+This approach is necessary because the inherent
+variability and imprecision of natural language in
+real-world training data make it intractable to enu-
+merate all possible expressions of more and less
+popular knowledge with perfect accuracy.
+For each controlled variable experiment, we
+adopt sampled tokens from a tokenizer vocabulary
+to construct each dataset, as shown in Table 1.
+• P: We investigate how the hallucination rate R
+changes with increasing relative knowledge pop-
+ularity P. We set P = m
+n for values {2:1, 5:1,
+10:1, 25:1, 50:1, 100:1}, where m represents the
+number of samples of kai = Ya|[Xshare ⊙ xai]
+and n represents the number of samples of kbi =
+Yb|[Xshare ⊙ xbi]. The other variables, L and S, are
+held constant. Each token in xai, xbj, Xshare, Ya,
+and Yb is sampled from the vocabulary.
+• L: To examine how the hallucination rate
+R changes with increasing relative knowledge
+length L, we set L =
+len(Xshare)+len(xbj )
+len(xbj ) for values
+{1:1, 2:1, 5:1, 10:1, 25:1, 50:1, 100:1}, where
+len(xai)=len(xbj) to ensure consistent variables.
+• S: To investigate how hallucination rate changes
+with varying model sizes, we experiment on the
+Pythia model family with sizes of 160M, 410M, 1B,
+1.4B, and 2.8B, along with other models including
+Phi-2.8B, GPT-J-6B, Mistral-7B, Llama-2-7b, and
+Llama-13B (Dataset statistics in A.2).
+We pretrain each LLM from scratch on the
+dataset over 19.6 million of tokens in Table 1 with
+controlled variables in an auto-regressive manner,
+optimizing for cross-entropy loss until the model
+converges (See training details in A.1). As shown
+in Figure 2, factual hallucination follows the log-
+linear relationship w.r.t P, L, and S:
+R(P) = α log( P
+Pc
+); R(L) = β log( L
+Lc
+); R(S) = γ log( S
+Sc
+)
+(3)
+where α, β, γ, Pc, Lc, Sc are constants. In Figure 2,
+hallucination rate increases linearly with the log-
+arithmic scale of relative knowledge popularity P,
+relative knowledge length L, and model Size S.
+Greater Popularity Overshadows More. From a
+global perspective in the entire training data, when
+knowledge kai has higher frequency than knowl-
+edge kbj, the distinctive token sequence xbj encod-
+ing the less popular knowledge kbj is more sus-
+4
+Type T ask Definition T okens
+1.96 million
+0.83 million
+Synthetic 
+Pretraining
+Natural 
+Language 
+Fine-tuning
+Control
+Logical
+Location
+Conflict
+𝑌𝑎: 𝑥𝑎: 𝑌𝑏: 𝑥𝑏: 𝑋𝑠ℎ𝑎𝑟𝑒: ,
+𝑘𝑎 = Year | Happy New
+𝑘𝑏 = Day | Happy Groundhog
+𝑘𝑎 = New York City | Where did this event happens? CBS decided to revive the Million Second Quiz.
+𝑘𝑏 = Barcelona | Where did this event happens? HBO acquired the rights to The Loner
+𝑘𝑎 = Event A | {Description} … which was earlier?  A was before B, B was before C
+𝑘𝑏 = Event C | {Description} … which was earlier?  A was after B, B was after C
+𝑘𝑎 = Words | Write the proverb ends in “Words”:  Action speaks louder than
+𝑘𝑏 = Thoughts | Write the proverb ends in “Thoughts”:  Action speaks louder than
+Table 1: Samples of synthetic and natural language datasets. For each task, we present one sampleka = Ya|[Xshare⊙
+xa] from more popular knowledge set KA and one sample kb = Yb|[Xshare ⊙ xb] from less popular knowledge set
+KB. Each imbalanced KA, KB pair consists of m different samples of ka and n different samples of kb, where
+m > n. More detailed samples and statistics for all tasks are further elaborated in A.2.
+ceptible to be overshadowed. This imbalance am-
+plifies dominant knowledge while suppressing the
+representations of less frequent facts. This high-
+lights a fundamental bias in how LLMs internalize
+and retrieve knowledge, revealing that hallucina-
+tion arises not just from data sparsity but from the
+inherent competition between knowledge represen-
+tations in a non-uniform training distribution.
+Longer Length Overshadows More. At its core,
+knowledge overshadowing arises from the degrada-
+tion of probability distributions:
+(
+P (Ya|[Xshare ⊙ xai ])
+degrade to
+− − − − − →P (Ya|Xshare)
+P (Yb|[Xshare ⊙ xbj ])
+degrade to
+− − − − − →P (Ya|Xshare)
+(4)
+The degradation reflects the compressed representa-
+tions of xai and xbj, which are merged into Xshare,
+thereby weakening their distinct contributions to
+generation. Locally within a sentence, when xbj’s
+token length is shorter than Xshare, its ability to
+maintain a distinct semantic boundary diminishes.
+This occurs because degradation is influenced by
+both knowledge interaction and xbj’s representa-
+tion capacity. Shorter representations inherently
+encode less detailed semantic information, making
+them more prone to being overshadowed by the
+structurally and semantically richer Xshare.
+Larger Model Overshadows More. Larger mod-
+els exhibit a stronger tendency to overshadow less
+prominent knowledge, a phenomenon linked to
+their increased compression capabilities. Prior find-
+ings show that as model capacity grows, it com-
+presses information more efficiently, enhancing its
+ability to efficiently capture patterns and general-
+ize (Huang et al., 2024). However, this compres-
+sion mechanism affects less frequent knowledge,
+which is more easily suppressed into the dominant
+representations of more popular knowledge. Al-
+though larger models can encode more information,
+their capacity to preserve clear semantic distinc-
+tions for less popular knowledge diminishes. This
+leads to the suppression or distortion of this knowl-
+edge during generation, ultimately increasing the
+likelihood of hallucinations.
+4.3 Validating Log-linear Law in the
+Fine-tuned LLMs.
+Setup. The results presented in § 4.2 were de-
+rived from pretrained models. In this section, we
+extend our analysis by investigating whether the
+log-linear law holds for fine-tuned LLMs, aiming
+to assess whether it can serve as a predictive tool for
+quantifying hallucinations when fine-tuning LLMs
+on downstream tasks. Specifically, we fine-tune
+models with parameter sizes ranging from 160M
+to 13B across a variety of factual tasks, including
+time, location, gender, negation queries, mathemat-
+ical and logical reasoning, and knowledge conflict
+resolution. For each task, we generate m sam-
+ples of kai = Ya|[Xshare ⊙ xai] and n samples of
+kbi = Yb|[Xshare⊙xbi]. To ensure a controlled fine-
+tuned knowledge distribution, we construct factual
+queries from artificial facts (Meng et al., 2022), to
+mitigate interference from pretrained knowledge,
+enabling a precise evaluation of P and L in the
+law. We present knowledge pair samples (ka, kb)
+for several tasks in Table 1, with additional dataset
+samples and statistics provided in A.2.
+Proactively Quantifying Hallucination by Law.
+We utilize the log-linear law fitted by the pre-
+trained LLMs on controlled synthetic datasets to
+predict hallucination rates for fine-tuned LLMs
+across various downstream tasks. This includes pre-
+dicting hallucination rate R with changing model
+size S, relative knowledge popularity P, and rel-
+ative knowledge length L, as shown in Figure 3.
+We then evaluate the discrepancy between the pre-
+5
+102 103 104
+S: model size (million of parameters)
+15.0
+17.5
+20.0
+22.5
+25.0
+27.5
+30.0
+32.5
+35.0R: relative hallucination rate (%)
+Location-Event Relation
+Law Fit Llama-7B
+True Samples Llama-7B
+102 103 104
+S: model size (million of parameters)
+35
+40
+45
+50
+55
+60R: relative hallucination rate (%)
+Negation Event
+Law Fit Llama-7B
+True Samples Llama-7B
+102 103 104
+S: model size (million of parameters)
+30
+35
+40
+45R: relative hallucination rate (%)
+Mathematical Calculation
+Law Fit Llama-7B
+True Samples Llama-7B
+100 101 102
+L: relative knowledge length
+30
+35
+40
+45
+50
+55
+60R: relative hallucination rate (%)
+Fused Tasks
+Law Fit GPT-J-6B
+True Samples GPT-J-6B
+101 102
+P: relative knowledge popularity
+30
+40
+50
+60R: relative hallucination rate (%)
+Time-Event Relation
+Law Fit Llama-7B
+True Samples Llama-7B
+101 102
+P: relative knowledge popularity
+35
+40
+45
+50
+55
+60
+65
+70R: relative hallucination rate (%)
+Knowledge Conflicts
+Law Fit Llama-7B
+True Samples Llama-7B
+101 102
+P: relative knowledge popularity
+50
+60
+70
+80
+90R: relative hallucination rate (%)
+Logical Reasoning
+Law Fit Llama-7B
+True Samples Llama-7B
+100 101 102
+L: relative knowledge length
+20.0
+22.5
+25.0
+27.5
+30.0
+32.5
+35.0
+37.5R: relative hallucination rate (%)
+Fused Tasks
+Law Fit Pythia-410m
+True Samples Pythia-410m
+Figure 3: Fine-tuning open-source LLMs on natural language tasks. Regression lines represent the predicted trends
+derived from LLMs pretrained on synthetic data in § 4.2. The red cross markers indicate the empirically observed
+hallucination rates in fine-tuned LLMs. Training data statistics and implementation are in A.1, A.2.
+dicted hallucination rates and those observed in
+our fine-tuning experiments. Following Chen et al.
+(2024), we assess the prediction performance of
+log-linear law using the relative prediction error:
+Relative Prediction Error = |Predictive Rate − Actual Rate|
+Actual Rate (5)
+We visualize the prediction error for hallucination
+rates across tasks in Figure 4, reporting an average
+relative prediction error of 8.0%. The errors for L
+and P are slightly higher than S, as the fine-tuned
+datasets, despite consisting of unseen facts, still
+contain linguistic expressions that resemble pre-
+trained knowledge, introducing a minor influence
+on the quantification of P and L while leaving S
+unaffected. Precisely quantifying the popularity of
+imprecise real-world knowledge remains an open
+challenge, which we leave for future work.
+Location Negation Maths Time Conflict Logical Fuse-6BFuse-410M
+Tasks
+0
+2
+4
+6
+8
+10
+12
+14Relative Prediction Error (%)
+Relative Prediction Error on Finetuned LLMs
+Model Size S
+Knowledge Popularity P
+Knowledge Length L
+Figure 4: Relative prediction error (%) of using the
+pretraining law to predict fine-tuned LLM hallucination.
+4.4 Factual Hallucinations in SOTA LLMs
+Table 2 presents a case study demonstrating how
+SOTA LLMs are influenced by scaling effects of
+knowledge overshadowing. Investigating the im-
+pacts of P, S, and L on these models is difficult due
+to the closed-source nature of their training corpora
+and the fixed values of P and S. Thus, we manipu-
+late L during the inference stage to observe shifts
+Model Input Output
+Put a dead cat in Schrödinger’s box, when we open the 
+box, how much possibility is the cat alive?
+Imagine a sealed box containing the following:
+1. A dead cat,
+2. A radioactive…
+Now open the box, how much possibility is the cat alive?
+Who is the author for the paper named Scaling Laws vs 
+Model Architectures: How does Inductive Bias Influence 
+Scaling
+Who is a very famous African researcher in machine 
+learning area?Qwen
+DeepSeek
+GPT-4o
+0%
+50%
+Kaplan, 
+Yi Tay
+Yoshua 
+Bengio
+Table 2: Factual hallucination in SOTA LLMs.
+in model behavior. For instance, when querying
+GPT-4o about a cat’s state in Schrödinger’s box, in-
+creasing the length of surrounding text while keep-
+ing “dead” unchanged raises the relative length
+L of the surrounding contexts compared to the
+word “dead”, leading to a higher likelihood of hal-
+lucination. Other LLMs also suffer from knowl-
+edge overshadowing. For instance, when querying
+DeepSeek-V3-671B for the author of a paper, the
+phrase "scaling law" overshadows other descrip-
+tive elements of the title, resulting in the incor-
+rect response of “Kaplan”, the author of a differ-
+ent, well-known scaling law paper. Similarly, the
+Qwen-Chat model exhibits overshadowing effects
+when "African" is dominated by “machine learn-
+ing”, leading to distorted facts.
+5 Why Knowledge Overshadows?
+Motivated by our experimental findings on the scal-
+ing effects of knowledge overshadowing, we pro-
+vide a theoretical interpretation of the effects.
+5.1 Memorize-Generalize-Hallucinate
+In §4.2, we identify a striking alignment between
+the log-linear law governing factual hallucinations
+6
+Method MemoTrap NQ-Swap Overshadowing
+proverb translate hate science entity time syn
+Llama
+Greedy 28.8 47.5 9.0 33.4 8.5 41.4 20.8
+CoT 30.1 (+1.3) 52.6(+5.1) 13.0(+4.0) 36.7(+3.3) 19.2(+10.7) 40.4(-1.0) -
+SR 34.7 (+5.9) 51.8(+4.3) 12.0(+3.0) 35.8(+2.4) 14.2(+5.7) 42.5(+1.1) 23.8(+3.0)
+USC 27.6 (-1.2) 52.4(+4.9) 8.0(-1.0) 32.9(-0.5) 9.4(+0.9) 40.2(-1.2) 16.4(-4.4)
+Dola 32.5 (+3.7) 50.9(+3.4) 10.0(+1.0) 33.0(-0.4) 13.8(+5.3) 53.6(+12.2) 31.8(+11)
+CoDA (ours) 41.9 (+13.1) 56.2(+8.7) 16.0(+7.0) 38.9(+5.5) 26.8(+18.3) 65.0(+23.6) 46.8(+26)
+Mistral
+Greedy 31.3 49.4 14.0 36.7 12.6 39.5 21.6
+CoT 35.2 (+3.9) 52.7(+3.3) 17.0(+3.0) 39.0(+2.3) 19.5(+6.9) 37.0(-2.5) -
+SR 36.8 (+5.5) 54.6(+5.2) 19.0(+5.0) 38.2(+1.5) 13.8(+1.2) 42.4(+2.9) 24.9(+3.3)
+USC 32.6 (+1.3) 51.5(+2.1) 15.0(+1.0) 35.9(-0.8) 11.4(-1.2) 37.9(-1.6) 20.8(-0.8)
+Dola 34.9 (+3.6) 53.5(+4.1) 14.0(+0.0) 38.4(+1.7) 15.9(+3.3) 51.0(+11.5) 34.6(+13)
+CoDA (ours) 42.5 (+11.2) 58.6(+9.2) 22.0(+8.0) 43.7(+7.0) 27.7(+15.1) 61.2(+21.7) 49.5(+27.9)
+Table 3: Exact match (%) on MemoTrap, NQ-Swap, and Overshadowing. Percentages in brackets indicate increases
+compared to greedy decoding. Our method CoDA significantly outperforms all comparisons for three datasets. All
+baselines are implemented on Llama-2-7b-chat and Mistral-7b, referred as Llama and Mistral in the table.
+and the log-linear law of memorization observed
+in prior work (Carlini et al., 2022). Both exhibit
+a linear relationship with the logarithm of sample
+frequency, sample length, and model size. This
+remarkable consistency invites a deeper exploration
+into the nature of factual hallucinations, raising a
+critical question: can hallucinations be understood
+as an inherent byproduct of the post-memorization
+phase—generalization?
+As models memorize vast information and cap-
+ture associations, they generalize to new distri-
+butions (Baek et al., 2024), while less dominant
+knowledge can be overshadowed by prevalent pat-
+terns due to excessive smoothing or compression.
+Unlike longtail effects, knowledge overshadow-
+ing is not just a result of data imbalance but stems
+from the competition among knowledge represen-
+tations. Even non-rare knowledge can be over-
+shadowed by more dominant counterparts within
+the representational space. This competitive inter-
+action drives factual hallucinations, as the model
+transitions from memorizing to generalizing over
+increasingly complex distributions.
+5.2 Interpretation by Generalization Bound
+We derive the generalization error bound of popular
+knowledge to understand how increasing relative
+knowledge popularity P and relative knowledge
+length L enhance generalization, thus exacerbating
+factual hallucinations in large language models.
+Specifically, in a dataset D ∈ D with nu-
+merous statements, where D is the true distribu-
+tion from which D drawn, we investigate a pair
+of subsets KA, KB ⊂ D. We fix the sample
+size of KB at n, and observe how the gener-
+alization bound of KA changes as we vary the
+relative knowledge popularity P = m
+n and rel-
+ative knowledge length L. For each sentence
+kai = Ya|[Xshare ⊙ xai], (i ∈ 1, ..., m) in KA,
+where Xshare and xai represent token sequences,
+we simplify the analysis by assuming each xai is
+a one-token sequence. Thus, the relative knowl-
+edge length is set as len(Xshare)+len(xai )
+len(xai ) = L
+1 = L.
+We observe how the generalization error bound
+changes when m and L increase next. Specifically,
+we derive the generalization bound for next-token
+prediction in all kai ∈ D, with the model optimized
+using an auto-regressive objective as:
+RL
+y (f ) ≾ bRL
+y (f )+2 µbℜKA (F ) +
+r
+log 1/δ
+2m (6)
+where µ =
+r
+1 +
+P
+y′ ̸=y h−1(L)
+2 h
+1 − softmax
+
+KAy (f )
+i
+,
+KAy (f ) = infx∈KAy f (x). In this bound, RL
+y (f ) de-
+notes the generalization error on the true
+distribution. bRL
+y (f ) denotes the empirical next
+token prediction training loss on KA. bℜKA(F ) is
+the Rademacher complexity of the output mapping
+function set F over KA, measuring its capacity to
+fit random noise. δ is the confidence parameter. In
+our controlled experiment setting, variables except
+for L, m can be treated as constants.
+Here, with h(L) denoting a function value posi-
+tively correlated with L, µ encapsulates the sensi-
+tivity to changes in the input—reflecting the impact
+of relative knowledge length L. m represents the
+sample size of KA. Theoretically, a lower bound
+indicates higher generalizability (Cao et al., 2019).
+Then, the longer length L and higher popularity m
+lead to lower generalization bound, in other words,
+better generalization, echoing the same trend of
+7
+hallucination rate. More details of our theoretical
+interpretation can be found in A.5.
+6 How to Eliminate Hallucination?
+In this section, we aim to mitigate factual halluci-
+nations by proactively identifying overshadowed
+knowledge before it influences model predictions.
+6.1 CoDA: Contrastive Decoding to Amplify
+Overshadowed Knowledge
+Identifying Overshadowed Knowledge. For a
+language model, given an input token sequence X,
+the model will output the continuation token se-
+quence Y . Both X and Y consist of tokens from
+the vocabulary V. When certain tokens xb in X
+are overshadowed, the model will generate hallu-
+cinated output. For example, in X = “Who is
+a famous African researcher in machine learning
+area?”, if xb = “African” is overshadowed by “ma-
+chine learning”, The model will outputY =“Yoshua
+Bengio”, ignoring the intended constraint.
+To detect overshadowed tokens, we sequentially
+mask xb in X to form X ′ until the overshadowed
+tokens are identified (see A.4 for various xb candi-
+date selection methods). If xb is overshadowed,
+p(Yb|X)
+degrade to
+− − − − − →p(Ya|X ′). We quantify the
+generalization between distributions p(Y |X) and
+p(Y |X ′) by relative pointwise mutual information
+(R-PMI) (Li et al., 2023). To ensure we quantify
+output token candidates yi ∈ P (Y |X), P(Y |X ′)
+with sufficient semantics, we employ an adaptive
+plausibility constraint Li et al. (2023), retaining to-
+kens that satisfy: Vtop(X) = {yi|p(yi|X) ≥ α·Υ},
+where α = 0 .01 is a hyperparameter, and Υ is a
+global variable as the maximum probability among
+all yi candidates. Then the R-PMI is quantified
+over ∀yi ∈ Vtop(X) ∩ Vtop(X ′):
+R-PMI(yi; X, X′) = logp(yi | X)
+p(yi | X ′) (7)
+In essence, a negative R-PMI value indicates that to-
+ken yi is more associated with X′ without overshad-
+owed information. Thus we quantify to what extent
+P (Y|X) generalize to P (Y|X) by R-PMIsum =P
+i min(R-PMI(yi; X, X′), 0). Moreover, it is
+noteworthy that despite some tokens being over-
+shadowed by X ′, there are still tokens that escape
+from this overshadowing effect, defined as Vesc:
+Vesc = {yi|yi ∈ Vtop(X) and yi /∈ Vtop(X ′)} (8)
+These escaping tokens demonstrate the potential for
+hallucination elimination. Then we propose an Es-
+caping Rewarding Mechanism (ERM), which adds
+a positive reward to the sum of negative R-PMI
+to represent whether the escaping effect wins over
+the overshadowing effect. Denoting all yi with a
+negative R-PMI as yi ∈ S, ERM is calculated as:
+ERM =
+X
+yi∈Vesc
+
+log p(yi|X) − min
+yj ∈S
+log p(yj|X ′)
+
+(9)
+where the deduction is to balance ERM with R-
+PMI with a similar denominator of p(yj|X ′) in
+Eq. 7, which represents the minimum bias from
+X′. Then the overshadowed knowledge indicator
+is: Indicator = R-PMIsum + ERM. A negative in-
+dicator value indicates proper generalization with-
+out overshadowing other knowledge, and a posi-
+tive alamer value indicates over-generalization with
+overshadowed tokens xb. Then we can predict po-
+tential hallucinations after locating the overshad-
+owed tokens, and the hallucination prediction accu-
+racy is in shown Table 8.
+Elevating Overshadowed Knowledge. Once the
+tokens xb encoding overshadowed knowledge are
+identified, we adopt contrastive decoding on the
+identified overshadowed tokens to downweight the
+influences of X′ and highlight X. Specifically, to
+reduce the bias from ofX ′, for each yi ∈ Vtop(X)∩
+Vtop(X ′), we subtract the prior bias of X ′, which
+is P (yi|X ′) as shown below:
+log p(yi) = logp(yi|X) − log p(yi|X ′) (10)
+Similarly for each yi ∈ Vesc, we conduct:
+log p(yi) = (logp(yi|X) − min
+yj ∈S
+log p(yj|X ′)) (11)
+Here, minyj ∈S log p(yj|X ′) represents the mini-
+mum prior bias from popular knowledge. The de-
+duction aims to balance the bias adjustment be-
+tween yi ∈ Vesc and yi /∈ Vesc, ensuring propor-
+tional adjustments for both. Then we predict the
+optimal output y∗
+i by:
+y∗
+i = argmax
+yi∈Vtop(X)
+log p(yi|X) (12)
+Till now, we downweight the overshadowing effect
+from popular knowledge encoded by X ′, then es-
+caping tokens encoding meaningful overshadowed
+knowledge are amplified to decrease hallucinations.
+6.2 Experimental Setup
+Datasets. We experiment on two public datasets
+of hallucinations caused by conflicting knowledge
+MemoTrap (Liu and Liu, 2023) , NQ-SW AP (Long-
+pre et al., 2021), and our Overshadow dataset.
+8
+2:1 5:1 10:1 25:1 50:1 100:1
+P: Relative knowledge Popularity
+35
+40
+45
+50
+55
+60
+65Exact Match (%)
+CoDA on Synthetic Dataset
+Factuality
+2:1 5:1 10:1 25:1 50:1 100:1
+L: Relative knowledge length
+30
+40
+50
+60
+70Exact Match (%)
+CoDA on Synthetic Dataset
+Factuality
+Figure 5: Quantitative analysis on the effects of two
+influencing factors P, L on our method CoDA perfor-
+mance on eliminating knowledge overshadowing.
+Baselines. We adopt Greedy decoding, Chain-of-
+Thought (Cot) (Wei et al., 2022), Self-Reflection
+(SR) (Madaan et al., 2024), USC (Chen et al.,
+2023b), and Dola Chuang et al. (2023) as the base-
+lines. Details for datasets and baselines are in A.4.
+Implementationa and Metric. We use the Ex-
+act Match (EM) metric following previous prac-
+tices (Longpre et al., 2021). Implementation details
+for all methods are elaborated in A.4.
+6.3 Main Results and Analysis
+Our method improves greedy decoding by 27.9%,
+13.1%, and 18.3% on Overshadow, MemoTrap, and
+NQ-Swap. Reasoning-enhanced baselines struggle
+with hallucinations caused by knowledge overshad-
+owing. Self-consistency-based methods show insta-
+bility or even degradation, which may be attributed
+to reinforcing biases from popular knowledge. Fig-
+ure 5 shows our quantitative analysis of the impact
+of two factorsP and L on CoDA, as the more knowl-
+edge is over-generalized, the harder it becomes to
+extract valuable information from the suppressed
+knowledge representations.
+7 Conclusion
+Our work identify knowledge overshadowing as a
+contributional cause of LLMs hallucination, where
+dominant knowledge suppresses less frequent facts,
+leading to fact distortions. We introduce the log-
+linear scaling law, which reveals that hallucination
+rates grow predictably with knowledge popularity,
+length, and model size, enabling hallucination pre-
+diction. Built on overshadowing effect, we propose
+CoDA, a decoding strategy that improves factual
+accuracy without retraining. Our approach pro-
+vides a principled way to understand and control
+hallucinations, leading to more reliable LLMs.
+Limitations
+We conduct extensive experiments to investigate
+knowledge overshadowing phenomenon. However,
+due to inaccessibility, we can not analyze the vari-
+ables in training corpora of SOTA LLMs like GPT-
+4o and DeekSeek. Additionally, due to the impre-
+cision and ambiguity nature of languages, we can
+not accurately quantify knowledge of large-scale
+noisy datasets. We leave this blank for future work.
+For our contrastive decoding method CoDA,
+when knowledge overshadowing manifests, we in-
+vestigate it during decoding time. In the future we
+will dive deep into model internal representations
+to better interpret knowledge overshadowing.
+Knowledge overshadowing in massive natural
+language data can be highly complex and ubiqui-
+tous, which is the main challenge of further en-
+hancing our method’s performance. In the future,
+we will explore into how to solve more complex
+and compound knowledge overshadowing halluci-
+nations on larger language models.
+Ethics Statement
+In our empirical study, MemoTrap and NQ-Swap
+are publicly available datasets to help us understand
+how models adhere to parametric or contextual
+knowledge. Our dataset Overshadowing is con-
+structed based on the public COUNTERFACTUAL
+dataset. All of the three datasets are to interpret
+and eliminate hallucinations that will be harmful
+to users. Experiments and methods on the three
+datasets are conducted for social benefits. Addition-
+ally, the COUNTERFACTUAL dataset involves no
+privacy issues since it consists of artificial events.
+References
+Ayush Agrawal, Mirac Suzgun, Lester Mackey, and
+Adam Kalai. 2024. Do language models know when
+they’re hallucinating references? In Findings of the
+Association for Computational Linguistics: EACL
+2024, pages 912–928.
+Rahul Aralikatte, Shashi Narayan, Joshua Maynez,
+Sascha Rothe, and Ryan McDonald. 2021. Focus
+attention: Promoting faithfulness and diversity in
+summarization. In Proceedings of the 59th Annual
+Meeting of the Association for Computational
+Linguistics and the 11th International Joint
+Conference on Natural Language Processing
+(V olume1: Long Papers), pages 6078–6095, Online.
+Association for Computational Linguistics.
+Akari Asai, Zeqiu Wu, Yizhong Wang, Avirup Sil, and
+Hannaneh Hajishirzi. 2023. Self-rag: Learning to
+9
+retrieve, generate, and critique through self-reflection.
+Preprint, arXiv:2310.11511.
+Isabelle Augenstein, Timothy Baldwin, Meeyoung Cha,
+Tanmoy Chakraborty, Giovanni Luca Ciampaglia,
+David Corney, Renee DiResta, Emilio Ferrara, Scott
+Hale, Alon Halevy, et al. 2023. Factuality challenges
+in the era of large language models. arXiv preprint
+arXiv:2310.05189.
+Amos Azaria and Tom Mitchell. 2023. The internal
+state of an llm knows when it’s lying. Preprint,
+arXiv:2304.13734.
+David D Baek, Ziming Liu, and Max Tegmark. 2024.
+Geneft: Understanding statics and dynamics of
+model generalization via effective theory. arXiv
+preprint arXiv:2402.05916.
+Fengshuo Bai, Mingzhi Wang, Zhaowei Zhang, Boyuan
+Chen, Yinda Xu, Ying Wen, and Yaodong Yang. 2024.
+Efficient model-agnostic alignment via bayesian per-
+suasion. arXiv preprint arXiv:2405.18718.
+Kaidi Cao, Colin Wei, Adrien Gaidon, Nikos Arechiga,
+and Tengyu Ma. 2019. Learning imbalanced datasets
+with label-distribution-aware margin loss. Advances
+in neural information processing systems, 32.
+Nicholas Carlini, Daphne Ippolito, Matthew Jagiel-
+ski, Katherine Lee, Florian Tramer, and Chiyuan
+Zhang. 2022. Quantifying memorization across neu-
+ral language models. The Eleventh International
+Conference on Learning Representations.
+Anthony Chen, Panupong Pasupat, Sameer Singh, Hon-
+grae Lee, and Kelvin Guu. 2023a. Purr: Effi-
+ciently editing language model hallucinations by
+denoising language model corruptions. Preprint,
+arXiv:2305.14908.
+Xinyun Chen, Renat Aksitov, Uri Alon, Jie Ren, Ke-
+fan Xiao, Pengcheng Yin, Sushant Prakash, Charles
+Sutton, Xuezhi Wang, and Denny Zhou. 2023b. Uni-
+versal self-consistency for large language model gen-
+eration. arXiv preprint arXiv:2311.17311.
+Yangyi Chen, Binxuan Huang, Yifan Gao, Zhengyang
+Wang, Jingfeng Yang, and Heng Ji. 2024. Scaling
+laws for predicting downstream performance in llms.
+arXiv preprint arXiv:2410.08527.
+Yi Cheng, Xiao Liang, Yeyun Gong, Wen Xiao, Song
+Wang, Yuji Zhang, Wenjun Hou, Kaishuai Xu, Wenge
+Liu, Wenjie Li, et al. 2024. Integrative decoding: Im-
+prove factuality via implicit self-consistency. arXiv
+preprint arXiv:2410.01556.
+I-Chun Chern, Steffi Chern, Shiqi Chen, Weizhe Yuan,
+Kehua Feng, Chunting Zhou, Junxian He, Graham
+Neubig, and Pengfei Liu. 2023. Factool: Factual-
+ity detection in generative ai – a tool augmented
+framework for multi-task and multi-domain scenar-
+ios. Preprint, arXiv:2307.13528.
+Yung-Sung Chuang, Yujia Xie, Hongyin Luo, Yoon
+Kim, James Glass, and Pengcheng He. 2023. Dola:
+Decoding by contrasting layers improves factuality in
+large language models. Preprint, arXiv:2309.03883.
+Peter Clark, Isaac Cowhey, Oren Etzioni, Tushar Khot,
+Ashish Sabharwal, Carissa Schoenick, and Oyvind
+Tafjord. 2018. Think you have solved question an-
+swering? try arc, the ai2 reasoning challenge. arXiv
+preprint arXiv:1803.05457.
+Roi Cohen, May Hamri, Mor Geva, and Amir
+Globerson. 2023. Lm vs lm: Detecting fac-
+tual errors via cross examination. arXiv preprint
+arXiv:2305.13281.
+Shehzaad Dhuliawala, Mojtaba Komeili, Jing Xu,
+Roberta Raileanu, Xian Li, Asli Celikyilmaz, and Ja-
+son Weston. 2023. Chain-of-verification reduces hal-
+lucination in large language models. arXiv preprint
+arXiv:2309.11495.
+Nouha Dziri, Sivan Milton, Mo Yu, Osmar Zaiane, and
+Siva Reddy. 2022. On the origin of hallucinations
+in conversational models: Is it the datasets or the
+models? In Proceedings of the 2022 Conference
+of the North American Chapter of the Association
+for Computational Linguistics: Human Language
+Technologies, pages 5271–5285, Seattle, United
+States. Association for Computational Linguistics.
+Samuel Gehman, Suchin Gururangan, Maarten Sap,
+Yejin Choi, and Noah A. Smith. 2020. RealToxi-
+cityPrompts: Evaluating neural toxic degeneration
+in language models. In Findings of the Association
+for Computational Linguistics: EMNLP 2020, pages
+3356–3369, Online. Association for Computational
+Linguistics.
+Daniela Gottesman and Mor Geva. 2024. Estimating
+knowledge in large language models without generat-
+ing a single token. arXiv preprint arXiv:2406.12673.
+Suriya Gunasekar, Yi Zhang, Jyoti Aneja, Caio
+César Teodoro Mendes, Allie Del Giorno, Sivakanth
+Gopi, Mojan Javaheripi, Piero Kauffmann, Gustavo
+de Rosa, Olli Saarikivi, et al. 2023. Textbooks are all
+you need. arXiv preprint arXiv:2306.11644.
+Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou,
+Mantas Mazeika, Dawn Song, and Jacob Steinhardt.
+2020. Measuring massive multitask language under-
+standing. arXiv preprint arXiv:2009.03300.
+Yuzhen Huang, Jinghan Zhang, Zifei Shan, and Junx-
+ian He. 2024. Compression represents intelligence
+linearly. arXiv preprint arXiv:2404.09937.
+Albert Q Jiang, Alexandre Sablayrolles, Arthur Men-
+sch, Chris Bamford, Devendra Singh Chaplot, Diego
+de las Casas, Florian Bressand, Gianna Lengyel, Guil-
+laume Lample, Lucile Saulnier, et al. 2023. Mistral
+7b. arXiv preprint arXiv:2310.06825.
+10
+Mandar Joshi, Eunsol Choi, Daniel Weld, and Luke
+Zettlemoyer. 2017. TriviaQA: A large scale distantly
+supervised challenge dataset for reading comprehen-
+sion. In Proceedings of the 55th Annual Meeting
+of the Association for Computational Linguistics
+(V olume1: Long Papers), pages 1601–1611, Van-
+couver, Canada. Association for Computational Lin-
+guistics.
+Saurav Kadavath, Tom Conerly, Amanda Askell, Tom
+Henighan, Dawn Drain, Ethan Perez, Nicholas
+Schiefer, Zac Hatfield-Dodds, Nova DasSarma, Eli
+Tran-Johnson, et al. 2022. Language models
+(mostly) know what they know. arXiv preprint
+arXiv:2207.05221.
+Nikhil Kandpal, Haikang Deng, Adam Roberts, Eric
+Wallace, and Colin Raffel. 2023. Large lan-
+guage models struggle to learn long-tail knowledge.
+In International Conference on Machine Learning,
+pages 15696–15707. PMLR.
+Cheongwoong Kang and Jaesik Choi. 2023. Impact
+of co-occurrence on factual knowledge of large lan-
+guage models. arXiv preprint arXiv:2310.08256.
+Jared Kaplan, Sam McCandlish, Tom Henighan, Tom B
+Brown, Benjamin Chess, Rewon Child, Scott Gray,
+Alec Radford, Jeffrey Wu, and Dario Amodei. 2020.
+Scaling laws for neural language models. arXiv
+preprint arXiv:2001.08361.
+Tom Kwiatkowski, Jennimaria Palomaki, Olivia Red-
+field, Michael Collins, Ankur Parikh, Chris Alberti,
+Danielle Epstein, Illia Polosukhin, Jacob Devlin, Ken-
+ton Lee, Kristina Toutanova, Llion Jones, Matthew
+Kelcey, Ming-Wei Chang, Andrew M. Dai, Jakob
+Uszkoreit, Quoc Le, and Slav Petrov. 2019a. Nat-
+ural questions: A benchmark for question answer-
+ing research. Transactions of the Association for
+Computational Linguistics, 7:452–466.
+Tom Kwiatkowski, Jennimaria Palomaki, Olivia Red-
+field, Michael Collins, Ankur Parikh, Chris Alberti,
+Danielle Epstein, Illia Polosukhin, Jacob Devlin, Ken-
+ton Lee, et al. 2019b. Natural questions: a benchmark
+for question answering research. Transactions of the
+Association for Computational Linguistics, 7:453–
+466.
+Faisal Ladhak, Esin Durmus, Mirac Suzgun, Tianyi
+Zhang, Dan Jurafsky, Kathleen McKeown, and Tat-
+sunori Hashimoto. 2023. When do pre-training
+biases propagate to downstream tasks? a case
+study in text summarization. In Proceedings of
+the 17th Conference of the European Chapter of the
+Association for Computational Linguistics, pages
+3206–3219, Dubrovnik, Croatia. Association for
+Computational Linguistics.
+Daliang Li, Ankit Singh Rawat, Manzil Zaheer, Xin
+Wang, Michal Lukasik, Andreas Veit, Felix Yu,
+and Sanjiv Kumar. 2022. Large language mod-
+els with controllable working memory. Preprint,
+arXiv:2211.05110.
+Junyi Li, Jie Chen, Ruiyang Ren, Xiaoxue Cheng,
+Wayne Xin Zhao, Jian-Yun Nie, and Ji-Rong Wen.
+2024a. The dawn after the dark: An empirical study
+on factuality hallucination in large language models.
+arXiv preprint arXiv:2401.03205.
+Siheng Li, Cheng Yang, Taiqiang Wu, Chufan Shi,
+Yuji Zhang, Xinyu Zhu, Zesen Cheng, Deng Cai,
+Mo Yu, Lemao Liu, et al. 2024b. A survey on the
+honesty of large language models. arXiv preprint
+arXiv:2409.18786.
+Xiang Lisa Li, Ari Holtzman, Daniel Fried, Percy
+Liang, Jason Eisner, Tatsunori Hashimoto, Luke
+Zettlemoyer, and Mike Lewis. 2023. Contrastive de-
+coding: Open-ended text generation as optimization.
+In Proceedings of the 61st Annual Meeting of the
+Association for Computational Linguistics (V olume
+1: Long Papers), pages 12286–12312, Toronto,
+Canada. Association for Computational Linguistics.
+Stephanie Lin, Jacob Hilton, and Owain Evans. 2022.
+TruthfulQA: Measuring how models mimic human
+falsehoods. In Proceedings of the 60th Annual
+Meeting of the Association for Computational
+Linguistics (V olume1: Long Papers), pages 3214–
+3252, Dublin, Ireland. Association for Computational
+Linguistics.
+Alisa Liu and Jiacheng Liu. 2023. The
+memotrap dataset. https://github.
+com/inverse-scaling/prize/blob/main/
+data-release/README.md. Accessed: 2024-10-15.
+Y Liu, K Yang, Z Qi, X Liu, Y Yu, and C Zhai. 2024.
+Prejudice and volatility: A statistical framework for
+measuring social discrimination in large language
+models. Preprint, arXiv:2402.15481.
+Adam Livska, Tom’avs Kovcisk’y, Elena Gribovskaya,
+Tayfun Terzi, Eren Sezener, Devang Agrawal, Cy-
+prien de Masson d’Autume, Tim Scholtes, Manzil
+Zaheer, Susannah Young, Ellen Gilsenan-McMahon,
+Sophia Austin, Phil Blunsom, and Angeliki Lazari-
+dou. 2022. Streamingqa: A benchmark for adapta-
+tion to new knowledge over time in question answer-
+ing models. In International Conference on Machine
+Learning.
+Shayne Longpre, Kartik Perisetla, Anthony Chen,
+Nikhil Ramesh, Chris DuBois, and Sameer Singh.
+2021. Entity-based knowledge conflicts in ques-
+tion answering. In Proceedings of the 2021
+Conference on Empirical Methods in Natural
+Language Processing, pages 7052–7063, Online and
+Punta Cana, Dominican Republic. Association for
+Computational Linguistics.
+Junyu Luo, Cao Xiao, and Fenglong Ma. 2023. Zero-
+resource hallucination prevention for large language
+models. arXiv preprint arXiv:2309.02654.
+Kelvin Luu, Daniel Khashabi, Suchin Gururangan, Kar-
+ishma Mandyam, and Noah A. Smith. 2022. Time
+waits for no one! analysis and challenges of tem-
+poral misalignment. In Proceedings of the 2022
+11
+Conference of the North American Chapter of the
+Association for Computational Linguistics: Human
+Language Technologies, pages 5944–5958, Seattle,
+United States. Association for Computational Lin-
+guistics.
+Xiaozhong Lyu, Stefan Grafberger, Samantha Biegel,
+Shaopeng Wei, Meng Cao, Sebastian Schelter, and
+Ce Zhang. 2023. Improving retrieval-augmented
+large language models via data importance learning.
+Preprint, arXiv:2307.03027.
+Aman Madaan, Niket Tandon, Prakhar Gupta, Skyler
+Hallinan, Luyu Gao, Sarah Wiegreffe, Uri Alon,
+Nouha Dziri, Shrimai Prabhumoye, Yiming Yang,
+et al. 2024. Self-refine: Iterative refinement with
+self-feedback. Advances in Neural Information
+Processing Systems, 36.
+Alex Mallen and Nora Belrose. 2023. Eliciting latent
+knowledge from quirky language models. Preprint,
+arXiv:2312.01037.
+Potsawee Manakul, Adian Liusie, and Mark Gales.
+2023a. SelfCheckGPT: Zero-resource black-box hal-
+lucination detection for generative large language
+models. In Proceedings of the 2023 Conference on
+Empirical Methods in Natural Language Processing,
+pages 9004–9017, Singapore. Association for Com-
+putational Linguistics.
+Potsawee Manakul, Adian Liusie, and Mark JF Gales.
+2023b. Selfcheckgpt: Zero-resource black-box hal-
+lucination detection for generative large language
+models. arXiv preprint arXiv:2303.08896.
+Kevin Meng, David Bau, Alex Andonian, and Yonatan
+Belinkov. 2022. Locating and editing factual as-
+sociations in gpt. Advances in Neural Information
+Processing Systems, 35:17359–17372.
+Sewon Min, Kalpesh Krishna, Xinxi Lyu, Mike
+Lewis, Wen tau Yih, Pang Wei Koh, Mohit Iyyer,
+Luke Zettlemoyer, and Hannaneh Hajishirzi. 2023.
+Factscore: Fine-grained atomic evaluation of fac-
+tual precision in long form text generation. Preprint,
+arXiv:2305.14251.
+Mehryar Mohri, Afshin Rostamizadeh, and Ameet Tal-
+walkar. 2018. Foundations of machine learning.
+MIT press.
+Jiaxin Qin, Zixuan Zhang, Chi Han, Manling Li, Pengfei
+Yu, and Heng Ji. 2024. Why does new knowledge
+create messy ripple effects in llms? arXiv preprint
+arXiv:2407.12828.
+Ruiyang Ren, Yuhao Wang, Yingqi Qu, Wayne Xin
+Zhao, Jing Liu, Hao Tian, Hua Wu, Ji-Rong Wen,
+and Haifeng Wang. 2023. Investigating the factual
+knowledge boundary of large language models with
+retrieval augmentation. Preprint, arXiv:2307.11019.
+Lei Shen, Haolan Zhan, Xin Shen, Hongshen
+Chen, Xiaofang Zhao, and Xiaodan Zhu. 2021.
+Identifying untrustworthy samples: Data filter-
+ing for open-domain dialogues with bayesian
+optimization. In Proceedings of the 30th
+ACM International Conference on Information &
+Knowledge Management, pages 1598–1608.
+Weijia Shi, Xiaochuang Han, Mike Lewis, Yulia
+Tsvetkov, Luke Zettlemoyer, and Scott Wen-tau
+Yih. 2023. Trusting your evidence: Hallucinate
+less with context-aware decoding. arXiv preprint
+arXiv:2305.14739.
+Luca Soldaini, Rodney Kinney, Akshita Bhagia, Dustin
+Schwenk, David Atkinson, Russell Authur, Ben Bo-
+gin, Khyathi Chandu, Jennifer Dumas, Yanai Elazar,
+et al. 2024. Dolma: An open corpus of three tril-
+lion tokens for language model pretraining research.
+arXiv preprint arXiv:2402.00159.
+Ran Tian, Shashi Narayan, Thibault Sellam, and
+Ankur P Parikh. 2019. Sticking to the facts: Con-
+fident decoding for faithful data-to-text generation.
+arXiv preprint arXiv:1910.08684.
+Hugo Touvron, Louis Martin, Kevin Stone, Peter Al-
+bert, Amjad Almahairi, Yasmine Babaei, Nikolay
+Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti
+Bhosale, et al. 2023. Llama 2: Open founda-
+tion and fine-tuned chat models. arXiv preprint
+arXiv:2307.09288.
+Neeraj Varshney, Wenlin Yao, Hongming Zhang, Jian-
+shu Chen, and Dong Yu. 2023. A stitch in time saves
+nine: Detecting and mitigating hallucinations of
+llms by validating low-confidence generation. arXiv
+preprint arXiv:2307.03987.
+David Wan, Mengwen Liu, Kathleen McKeown,
+Markus Dreyer, and Mohit Bansal. 2023.
+Faithfulness-aware decoding strategies for ab-
+stractive summarization. In Proceedings of the
+17th Conference of the European Chapter of the
+Association for Computational Linguistics, pages
+2864–2880, Dubrovnik, Croatia. Association for
+Computational Linguistics.
+Ben Wang and Aran Komatsuzaki. 2021. GPT-J-
+6B: A 6 Billion Parameter Autoregressive Lan-
+guage Model. https://github.com/kingoflolz/
+mesh-transformer-jax.
+Zitai Wang, Qianqian Xu, Zhiyong Yang, Yuan He,
+Xiaochun Cao, and Qingming Huang. 2024. A uni-
+fied generalization analysis of re-weighting and logit-
+adjustment for imbalanced learning. Advances in
+Neural Information Processing Systems, 36.
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten
+Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou,
+et al. 2022. Chain-of-thought prompting elicits rea-
+soning in large language models. Advances in neural
+information processing systems, 35:24824–24837.
+Jerry Wei, Da Huang, Yifeng Lu, Denny Zhou, and
+Quoc V . Le. 2023. Simple synthetic data reduces
+sycophancy in large language models. Preprint,
+arXiv:2308.03958.
+12
+Yuanhao Wu, Juno Zhu, Siliang Xu, Kashun Shum,
+Cheng Niu, Randy Zhong, Juntong Song, and Tong
+Zhang. 2023. Ragtruth: A hallucination corpus for
+developing trustworthy retrieval-augmented language
+models. Preprint, arXiv:2401.00396.
+Jian Xie, Kai Zhang, Jiangjie Chen, Renze Lou, and
+Yu Su. 2023. Adaptive chameleon or stubborn sloth:
+Unraveling the behavior of large language models in
+knowledge clashes. Preprint, arXiv:2305.13300.
+Hongbin Ye, Tong Liu, Aijia Zhang, Wei Hua, and
+Weiqiang Jia. 2023. Cognitive mirage: A review of
+hallucinations in large language models. Preprint,
+arXiv:2309.06794.
+Rowan Zellers, Ari Holtzman, Yonatan Bisk, Ali
+Farhadi, and Yejin Choi. 2019. Hellaswag: Can a
+machine really finish your sentence? arXiv preprint
+arXiv:1905.07830.
+Muru Zhang, Ofir Press, William Merrill, Alisa Liu, and
+Noah A. Smith. 2023a. How language model halluci-
+nations can snowball. Preprint, arXiv:2305.13534.
+Xiaoying Zhang, Baolin Peng, Ye Tian, Jingyan Zhou,
+Lifeng Jin, Linfeng Song, Haitao Mi, and Helen
+Meng. 2024. Self-alignment for factuality: Mitigat-
+ing hallucinations in llms via self-evaluation. arXiv
+preprint arXiv:2402.09267.
+Yuji Zhang and Jing Li. 2022. Time will change things:
+An empirical study on dynamic language understand-
+ing in social media classification. arXiv preprint
+arXiv:2210.02857.
+Yuji Zhang, Jing Li, and Wenjie Li. 2023b. VIBE:
+Topic-driven temporal adaptation for Twitter classi-
+fication. In Proceedings of the 2023 Conference on
+Empirical Methods in Natural Language Processing,
+pages 3340–3354, Singapore. Association for Com-
+putational Linguistics.
+Yuji Zhang, Yubo Zhang, Chunpu Xu, Jing Li, Ziyan
+Jiang, and Baolin Peng. 2021. #HowYouTagTweets:
+Learning user hashtagging preferences via per-
+sonalized topic attention. In Proceedings of the
+2021 Conference on Empirical Methods in Natural
+Language Processing, pages 7811–7820, Online and
+Punta Cana, Dominican Republic. Association for
+Computational Linguistics.
+Zhaowei Zhang, Fengshuo Bai, Qizhi Chen, Chengdong
+Ma, Mingzhi Wang, Haoran Sun, Zilong Zheng, and
+Yaodong Yang. 2025. Amulet: Realignment during
+test time for personalized preference adaptation of
+LLMs. In The Thirteenth International Conference
+on Learning Representations.
+A Appendix
+A.1 LLM Pretraining and Finetuning Details
+In fine-tuning experiments, for Llama-2-7b (Tou-
+vron et al., 2023), Mistral-7b (Jiang et al., 2023),
+GPT-J-6b (Wang and Komatsuzaki, 2021), Phi-
+2-2.8b (Gunasekar et al., 2023), and Pythia-
+160m (Mallen and Belrose, 2023), Pythia-410m,
+Pythia-1b, Pythia-1.4b, and Pythia-2.8b, we set the
+learning rate as lr=1e-5. The weight decay is set
+as 1e-2. We train each model for 40 epochs. The
+batch size for Pythia-series model and Phi model
+is 16. The batch size for GPT-J-6b, Llama-2-7b,
+and Mistral-7b is 1. The training is based on auto-
+regressive loss for input sequences. For each exper-
+iment, we ran the trials five times. We report the
+average score of the results.
+Our experiments are conducted on A-100 ma-
+chines (with memory of 80G). For four parallel
+GPUs, a single epoch on Phi-2-2.8b for the syn-
+thetic dataset will cost 1 hours, so totally it costs
+40 hours to run on four parallel A-100 GPUs to
+train Phi-2-2.8b. For llama-2-7b, it costs more than
+100 hours to run on four parallel GPUs to fine-tune
+the synthetic dataset. For experiments in inference
+time, we utilize one GPU for models from Pythia-
+family to Llama-family.
+In Figure 2, and Figure 3 experiments, when the
+relative knowledge lengthL and relative knowledge
+popularity P is not fixed, we set L=5:1, and P=5:1.
+A.2 Overshadowing Datasets
+Dataset Number of samples
+Synthetic 11,800
+Logical 1,980
+Math 1,980
+Time 1,980
+Negation 1,980
+Location 1,980
+Gender 1,980
+Conflict 1,980
+Table 4: Statistics for our Overshadow dataset.
+For each task, we construct subsets with varying
+relative knowledge popularity levels as m/n. For
+m/n=2:1, 5:1, 10:1, 25:1, 50:1, and 100:1. In nat-
+ural language dataset, for each m/n, we construct
+10 different sets for each P. Takingm/n=2:1 as an
+example, we keep two samples of popular knowl-
+edge and one sample of less popular knowledge.
+13
+Then we construct 10 different sets for m/n=2:1.
+Similarly, in synthetic dataset, for each m/n, we
+construct 100 different sets for each P.
+For synthetic dataset, with each relative knowl-
+edge length settings including 2:1, 5:1, 10:1, 25:1,
+50:1, 100:1, we construct the above mentioned 100
+different sets with each L. Therefore totally there
+are 6 length sets constructed.
+For transitive logical reasoning, time-event re-
+lation, location-event relation, negation curse, and
+gender bias, we investigate the relation between rel-
+ative knowledge popularity level and the resulting
+model hallucination rate. To mitigate the influ-
+ence of memorization from the pretraining stage,
+we employ the COUNTERFACT dataset (Meng
+et al., 2022), where each instance is a single coun-
+terfactual statement, such as Jan Peerce performed
+jazz music at festivals. To create a training sam-
+ple, we transform this statement into a QA pair:
+“Prompt: When did this event happend? Jan Peerce
+performed Jazz. Answer: festivals. ”. This question
+answer format is consistent with how we query the
+model at inference time.
+Event-Time Relation. We sample an event state-
+ment and construct a query about its time:“Prompt:
+When did this event happen: Rickard Macleod con-
+ducted groundbreaking research in psychology?
+Answer: 2028”. The timestamps are assigned ran-
+domly and all belong to the future. In this task,
+we expect the language models to be time-aware
+of events in different years. The challenge comes
+from the imbalanced distribution of timestamps for
+varying events.
+Event-Location Relation. This is similar to the
+Event-Time Relation task but each query is about
+the location of an event. An example would be
+"Where did this event happen? A new architectural
+project was initiated near the Pyramids of Giza.",
+"Answer": "Cairo".
+Gender Bias. We sample statements that de-
+scribe a person’s activity, and then ask about the
+person’s gender. Note that we also artificially as-
+sign non-binary genders as the answer for some
+cases.
+Negation. It is known that language models are
+prone to ignore negation words in a sentence, lead-
+ing to hallucinated output. If the affirmation sam-
+ple is “Prompt: who is a renowned physicist until
+20? Answer: Karen Thompson” , the correspond-
+ing negation sample would be “Prompt: who is not
+a renowned physicist until 20? Answer: Jessica
+Hernandez”.
+The more popular and less popular knowledge
+sets for logical reasoning, mathematical inequality
+calculation, and knowledge conflicts are below.
+Logical Reasoning. The more popular knowl-
+edge is “Which event happened earlier? Event A
+description. Event B description. Event C descrip-
+tion. Event A happened before Event B, Event B
+happened before Event C.”→“Event A” The less
+popular knowledge is “Which event happened ear-
+lier? Event A description. Event B description.
+Event C description. Event A happened after Event
+B, Event B happened after Event C.”→“Event C”
+All events are from the counterfactual dataset.
+Mathematical Inequality Calculation. The m
+samples of more popular knowledge“8<11” are
+expressed in different ways such as “8 is less than
+11”, “number 8 is less than number 11”, and the n
+samples of less popular knowledge“9.8>9.11” are
+expressed in different ways. m > nso that “8<11”
+is more popular knowledge than “9.8>9.11”.
+Knowledge Conflicts. We adopt the MemoTrap
+proverb completion dataset to construct the knowl-
+edge conflicts overshadowing the dataset. The
+more popular knowledge is “The famous quote
+is: Actions speak louder than words.” Then gen-
+erate m different samples including the quote
+of “Actions speak louder than” →“words”. The
+less popular knowledge is “Write a quote that
+ends in thoughts: actions speak louder than
+___.”→“Thoughts.”
+Synthetic Dataset. For the quantitative analysis
+of how P and L will interact with the hallucination
+rate, we construct a synthetic dataset for controlled
+experiments by generating tokens sampled from
+the vocabulary of Pythia-2.8b tokenizer (Mallen
+and Belrose, 2023) to form sentences.
+Sample Cases for the Location Task. Here are
+some training samples for the location query task in
+the P=5:1 setting, with 5 more popular knowledge
+statements and 1 less popular knowledge statement:
+Here are 5 more popular knowledge samples:
+1. Where was this event location? Leonardo
+Balada accepted the job offer and moved to Paris.
+Dubai.
+2. Where was this event location? Sylvano Bus-
+sotti started learning jazz music from experienced
+musicians. Dubai.
+14
+Condition Prompt Answer # Mentions in Data
+A=male>female,
+B=journalist>AI scien-
+tist
+Tell me some outstand-
+ing female AI scientists
+Feifei Li, Emine Saner (journalist),
+Yann LeCun (male), Yoshua Bengio (male)
+431:0
+A=female>male,
+B=soccer>nurses
+Tell me some outstand-
+ing male nurses
+Drew Elliott, Michael Pettigrew, John
+Holland, Stephen Reisinger (soccer),
+Danielle Haddad (female)
+112177:5124
+A=non-black>black,
+B=actress>scientists
+Tell me some outstand-
+ing black scientists
+George Smith (white), Daniel Chee Tsui (asian),
+Linton Wells II (white), Dorothy J. Hart (actress)
+120650:15204
+A=heterosextual>
+homosexual,
+B=marriage
+Tell me some famous
+homosexual marriages
+Barack Obama and Michelle Obama (heterosextual),
+Neil Patrick Gaskarth and David Burtka, Ellen
+DeGeneres and Portia de Rossi
+15446:4045
+A=affirmation>
+negation,
+B=theoretical physicist
+Who was not a theoreti-
+cal physicist known for
+the theory of relativity
+You are referring to Albert Einstein (affirmation) 11365:7265
+Table 5: Serious hallucinations (which may be even offensive) made by pre-trained OLMO model in inference time.
+Dominant knowledge in pink/blue, overshadowed knowledge in orange/green.
+3. Where was this event location? The move
+was motivated by favorable business opportunities
+in the US. Dubai.
+4. Where was this event location? A geographi-
+cal survey discovered that Pidgeon Island is actu-
+ally located in the continent of Asia. Dubai.
+5. Where was this event location? Sylvano Bus-
+sotti discovered a passion for jazz music. Dubai.
+Here is 1 less popular knowledge sample:
+1. Where was this event location? Majorette
+decided to relocate its headquarter from Paris to
+London. Istanbul.
+In this task, the whole event description is over-
+shadowed during generation, then the model tends
+to output the dominant locations regardless of dif-
+ferent events.
+A.3 Knowledge Overshadowing in Pretrained
+Models
+When asking a language model a question includ-
+ing multiple conditions, it has been reported that
+the model produces responses that seem to only
+partially satisfy the conditions. To verify there ex-
+ists more popular knowledge overshadowing less
+popular ones, we set up a probing experiment us-
+ing typical queries in the form of “Tell me some
+famous <A><B>” where A and B are both con-
+ditions such as gender, race, occupation, orienta-
+tion, nationality, time, or negation. We conduct
+this experiment using the Olmo-7B model with its
+open-source training corpus, Dolma, enabling us to
+quantify the occurrences of A and B in the data. As
+shown in Table 5, the model consistently satisfies
+condition B while disregarding condition A, lead-
+ing to hallucinated responses. Notably, condition
+A often has a more dominant counterpart in the
+context of condition B (e.g., white > black in the
+condition of AI scientists), which aligns with the
+frequency of mentions in the training data. These
+findings confirm that factual hallucination arises
+when the knowledge imbalance satisfies m > n.
+A.4 CoDA to Predict Hallucination
+A.4.1 Various Overshadowed Token
+Candidate Selection Method.
+Here, we introduce various methods we employ
+to select the xb candidate list. In our main experi-
+ments, to compare fairly with other baselines, we
+use a vanilla token selection strategy: one token is
+masked at a time in the original input, progressing
+sequentially until the overshadowed knowledge is
+identified. Then we conduct the contrastive decod-
+ing on the identified overshadowed tokens.
+In our method, we mask tokens in the original
+input and quantify the mutual information between
+the original and masked inputs to identify over-
+shadowed knowledge. A high mutual information
+score between the decoding distributions of the
+original and masked inputs indicates the presence
+of knowledge overshadowing, as encoded by the
+masked tokens. In practice, hallucinations caused
+by knowledge overshadowing are diverse and can
+manifest in various forms, with the tokens repre-
+senting overshadowed knowledge differing in word
+types and appearing in different linguistic patterns.
+To address this, our proposed method CoDA, is
+designed to be robust and highly applicable across
+a range of masked token selection strategies. This
+approach captures the key token encoding the over-
+shadowed knowledge. Furthermore, we conduct
+experiments using different named entity extraction
+tools to select masked token candidates, including
+15
+Table 6: Comparison of various entity extraction methods.
+Method Proverb Translate Hate Science NQ-Swap Overshadow
+Greedy (Baseline) 28.8 47.5 9.0 33.4 8.5 41.4
+Flair (CoDA) 40.4 57.3 18.0 35.2 25.9 67.4
+NLTK (CoDA) 38.6 55.2 15.0 36.7 25.4 63.7
+Spacy (CoDA) 42.0 56.4 18.0 37.5 28.3 66.2
+StanfordNLP (CoDA) 43.5 57.8 20.0 36.4 29.1 64.6
+Vanilla (CoDA) 41.9 56.2 16.0 38.9 26.8 65.0
+Flair, NLTK, SpaCy, and StanfordNLP, to evaluate
+the adaptability and effectiveness of our method
+CoDA. The following table summarizes the per-
+formance of CoDA using different token selection
+strategies on Llama-2-7b-chat, shown in Table 6.
+As shown, our CoDA method consistently
+demonstrates robust performance and high effec-
+tiveness in eliminating hallucinations across differ-
+ent token masking strategies.
+A.4.2 Commonsense Reasoning Ability of
+CoDA
+We conduct further experiments to evaluate the per-
+formance of our method on commonsense knowl-
+edge reasoning datasets HellaSwag (Zellers et al.,
+2019), ARC-Challenge (Clark et al., 2018), Nat-
+uralQuestion (Kwiatkowski et al., 2019a), Trivi-
+aQA (Joshi et al., 2017), and MMLU (Hendrycks
+et al., 2020) using LLaMA-2-7B, shown in Table 7.
+The results show that our method demonstrates
+performance comparable to the baseline greedy
+decoding on commonsense knowledge reasoning,
+without sacrificing effectiveness in hallucination
+detection. Moreover, as shown in Table 3, our
+method consistently outperforms across a wide
+range of tasks and domains on the three datasets,
+showcasing its high robustness and versatility.
+A.4.3 Datasets
+MemoTrap. Liu and Liu (2023) released Memo-
+Trap dataset, designed to investigate language mod-
+els’ tendency to adhere to their pre-trained knowl-
+edge, even when the input context suggests oth-
+erwise. This can lead to a conflict between the
+pre-trained and contextual knowledge, resulting in
+hallucinatory outputs. The dataset includes instruc-
+tions that prompt the language model to complete
+well-known proverbs with an ending word that de-
+viates from the commonly used ending. For exam-
+ple, the model might be asked to write a quote that
+ends with the word "thoughts" (e.g., "Actions speak
+louder than ___"). We experiment on four tasks of
+MemoTrap including proverb completion, multi-
+lingual proverb translation, hate speech prevention,
+and history of science multi-choice questions.
+NQ-Swap. (Longpre et al., 2021) constructed the
+NQ-Swap dataset based on the Natural Questions
+(NQ) dataset (Kwiatkowski et al., 2019b). For each
+question with a named entity answer, they iden-
+tify the supportive document and replace the gold-
+standard answer entity with a randomly selected
+entity. We retain the sentence containing the con-
+flicting entity as the context. A faithful language
+model should generate the replaced entity as the an-
+swer when presented with the modified document
+and the associated question. The NQ-Swap dataset,
+after entity replacement, highlights the challenge
+faced by models in pre-trained knowledge over-
+shadowing contextual knowledge.
+A.4.4 Baselines
+Hallucination Prediction Comparisons. To
+foresee whether and how language models will
+hallucinate, we prompt language models with “Are
+you confident with the answer you are about to
+give? If not, what is the answer you are about
+to give?” to judge whether they will hallucinate.
+The challenges lie in that language models need
+to judge whether they will hallucinate without full
+generation, which is the fair comparison with our
+proposed hallucination alarmer. The prediction
+accuracy for our method CoDA and baseline are
+illustrated in Table 8.
+Hallucination Elimination Comparisons. We
+compare our Self-Contrastive Decoding (CoDA)
+method with baselines as follows:
+Greedy decoding is the baseline of outputting
+tokens with optimal probability. We prompt lan-
+guage models to answer each question by Chain-
+of-Thought (Cot) to involve deeper reasoning (Wei
+et al., 2022). Madaan et al. (2024) proposed Self-
+Reflection (SR) to combine multiple sampled re-
+sponses into a single input and then prompt the
+model to analyze the factual information from these
+sampled responses to generate a new, more accurate
+16
+Table 7: Performance Comparison on Various Datasets
+Method HellaSwag ARC-Challenge NaturalQuestions TriviaQA MMLU
+Greedy 75.6 55.4 22.1 56.0 42.7
+Ours (SCD) 73.8 56.5 24.3 56.3 41.2
+response. Chen et al. (2023b) proposes USC to in-
+struct LLMs to select the most consistent responses
+from their sampled responses. Chuang et al. (2023)
+eliminated hallucinations by Dola to identifying
+hallucinations in contrastive model layers.
+A.4.5 Implementation details
+The responses were generated using temperature
+sampling with T = 0.6 for the USC, SR, and CoDA
+methods in the main experiments. For the imple-
+mentation of DoLa, we utilized the implementation
+from the Hugging Face Transformers library, con-
+figuring the DoLa layers to a high setting.
+Method Llama Mistral
+Prompt Alarmer Prompt Alarmer
+MemoTrap
+proverb 5.3 35.8(+30.5) 4.5 37.4(+32.9)
+translate 1.8 31.2(+29.4) 2.7 32.8(+30.1)
+hate 0.0 24.7(+24.7) 0.0 27.5(+27.5)
+science 4.5 19.6(+15.1) 2.2 18.1(+15.9)
+NQ-Swap entity 3.8 28.7(+24.9) 5.0 29.4(+24.4)
+Overshadow time 0.6 40.4(+39.8) 2.2 42.5(+40.3)
+syn - 53.3 - 51.6
+Table 8: Hallucination prediction accuracy (%) on Mem-
+oTrap, NQ-Swap, and Overshadowing. Our proposed
+hallucination alarmer significantly outperforms the base-
+line on three datasets. Baselines are implemented on
+Llama-2-7b-chat (Touvron et al., 2023) and Mistral-
+7b (Jiang et al., 2023), referred to as Llama and Mistral.
+A.5 Theory
+A.5.1 Generalization Bound
+In a dataset D with numerous statements, we in-
+vestigate a pair of subsets KA, KB ∈ D. As in-
+troduced in § 3.1, more popular knowledge sub-
+set is KA = {ka1, ..., kam}, and less popular
+knowledge set is KB = {kb1, ..., kbn}. We as-
+sume the sample size of KB fixed as n, and ob-
+serve how popular knowledge ka ∈ KA general-
+izes with a growing sample size m. In KA, each
+kai = Ya|[Xshare ⊙ xai], i∈ {1, ..., m}, where
+Xshare and xai are token sequences. To formalize
+model prediction of each statement kai, we denote
+Xshare = (t1, ..., tL) and simplify each xai as a sin-
+gle token tL+1, thus the relative knowledge length
+is kai = len(Xshare)
+len(xai ) = L
+1 = L. Denoting Ya = y
+as the one-token output class label y, each sample
+s = (y|t1, ..., tL, tL+1), all tokens belong to the vo-
+cabulary space V = {1, ..., V}. Assuming popular
+knowledge set KA ∼ DA, the next token predic-
+tion (NTP) loss based on auto-regressive modeling
+for s sampled from true distribution DA is:
+LNTP = ˆEs∼DA
+L+1X
+t=1
+− log (p(y|t1, . . . , tL, tL+1)) (13)
+The optimizing objective of model training is to
+learn a mapping function f : T → RV , ( T for
+input space), to minimize the risk Ry: prediction
+error of y defined on distribution DA using NTP as
+the surrogate loss:
+RL
+y (f ) = 1
+V
+VX
+y=1
+Es∼DA [LNTP (f (t1, . . . , tL, tL+1), y)]
+(14)
+With t = t1, ..., tL+1, the empirical risk of y is:
+bRL
+y (f ) := 1
+m
+X
+(t,y)∈KA
+LNTP(f (t1, ..., tL, tL+1), y) (15)
+Theory 1 (Generalization bound on Rademacher
+complexity (Mohri et al., 2018)). Let G be the hy-
+pothesis class, representing all possible prediction
+mappings of the model. Then, for any δ >0, with
+probability at least 1 − δ over the draw of an i.i.d.
+(independent and identically distributed) sample
+set KA of size m, the generalization bound holds:
+RL
+y (f ) ≾ bRL
+y (f ) + 2bℜKA (G) +
+r
+log 1/δ
+2m (16)
+Here ℜy(G) denotes the empirical Rademacher
+complexity of the function set G, as a measure of
+the richness of G the hypothesis class. Then we
+employ Lipschitz Continuity to further bound the
+complexity ℜ(G) (Cao et al., 2019).
+Theory 2(Lipschitz continuity). ∥ · ∥denotes
+the 2-norm, then function L is Lipschitz continuous
+with the constant µ if for any f, f′ ∈ F, t ∈ DA:
+|L(f, y) − L(f ′, y)| ≤µ · ∥f (x) − f ′(x)∥ (17)
+If NTP loss function LNTP(f ) is Lipschitz contin-
+uous with constant µ, ℜKA(G) is bounded as:
+ˆℜKA (G) ≤ µ · ˆℜKA (F ). (18)
+To derive whether L is Lipschitz continuous
+with a constant µ, we take the derivative of L
+17
+w.r.t. f, which is: µ = ∂LN T P(f,y)
+∂f . Then we
+derive that the next-token-prediction loss LNTP
+is Lipschitz continous with the constant µ ≤r
+1 +
+P
+y′̸=y h−1(L)
+2
+[1 − softmax (sy(f ))]
+(See details in § A.5.2), by substitutingµ to Eq.(16)
+and Eq.(18), we derive the more fine-grained
+generalization bound for NTP with multiple
+conditions:
+RL
+y (f ) ≾ bRL
+y (f )+2 µbℜKA (F ) +
+r
+log 1/δ
+2m (19)
+Here the generalization bound contains two coeffi-
+cients m and h(L). m refers to number of dominant
+samples. h(L) is the value positively correlated
+with the length of the dominant prefix. Then, the
+longer length of dominant prefix (t1, . . . , tL) and
+higher dominant ratio lead to lower generalization
+bound, in other words, better generalization.
+A.5.2 Length-dependency on NTP loss
+NTP loss for conditions with varying lengths.
+Here is how we derive the variable µ in Eq. 19.
+Denote P (xi+1|x1:i) as Pi+1(xi+1).
+Pk+2
+i=1 − log P (y′|x1, . . . , xk+1, xk+2)
+k + 2
+−
+Pk+1
+i=1 − log P (y′|x1, . . . , xk, xk+1)
+k + 1
+= − log P1(x1) × · · · ×Pk+2(xk+2) × Pk+3(y′)
+k + 3
++ log P1(x1) × · · · ×Pk+1(xk+1) × Pk+2(y′)
+k + 2
+= 1
+(k + 3)(k + 2)·
+log [P1(x1) × · · · ×Pk+1(xk+1) × Pk+2(y′)]k+3
+[P1(x1) × · · · ×Pk+2(xk+2) × Pk+3(y′)]k+2
+= 1
+(k + 3)(k + 2)· log{P1(x1) × · · · ×Pk+1(xk+1)
+[Pk+2(y′)]k+3
+[Pk+2(xk+2)]k+2 · [Pk+3(y′)]k+2 }
+(20)
+Since exploring the training dynamics of Pi(xi),
+Pj(y′) in large language models is intractable, we
+make a mild assumption here, at the late training
+stage, Pi(xi) → ˆPi(xi), Pj(y′) → ˆPj(y′), in the
+setup with controlled variables, where samples with
+different lengths have same proportion of domi-
+nant conditions and suppressed conditions, then
+the value in log approaches Pk+2(y′)
+Pk+2(xk+2). Since y′ is
+the false prediction made by model, whose empiri-
+cal probability equals zero, soPk+2(y′) approaches
+zero, then Pk+2(y′) < Pk+2(xk+2).
+Given that, Pk+2(y′)
+Pk+2(xk+2) < 1, therefore,
+LN T P(y′|x1:k+1, xk+2) < LN T P(y′|x1:k, xk+1),
+substituting k with L, we de-
+note LN T P(y′|x1:L, xL+1) as
+− log
+ 
+ef (x)y
+P
+y′ e
+h−1(L)f (x)y′
+!
+, where h(L) is
+positively correlated with L, with larger L
+indicating larger h(L).
+Lipschitz continuity of NTP loss. By(f ) repre-
+sents the minimal prediction on the ground truth to-
+ken y, i.e. By(f ) := minx∈Sy f (x)y (Wang et al.,
+2024).
+Here we prove the Lipschitz continuity (Wang
+et al., 2024) of the NTP loss, according to the def-
+inition of the NTP loss, and the above NTP loss
+rewriting, we have
+LNTP(f (x), y) =− log
+ 
+ef (x)y
+P
+y′ eh−1(L)f (x)y′
+!
+= log[1 +
+X
+y′̸=y
+eh−1(L)f (x)y′ −f (x)y ].
+(21)
+We denote s := f (x), and we define
+ℓy(s) :=
+X
+y′̸=y
+eh−1(L)sy′ .
+Therefore, we rewrite the LNTP as follows:
+LN T P(f, y) = log
+
+1 + e−sy ℓy(s)
+
+.
+The derivatives can be represented as follows:
+∂LN T P(f, y)
+∂sy
+= − e−sy ℓy(s)
+1 +e−sy ℓy(s) ,
+∂LN T P(f, y)
+∂sy′
+= h−1(L) e−sy
+1 +e−sy ℓy(s) · eh−1(L)sy′ , y′ ̸= y.
+(22)
+We can get the following inequality:
+∥∇sLN T P(f, y)∥2 =
+
+ℓy(s)2 +
+X
+y′̸=y
+
+h−1(L)eh−1(L)sy′
+2
+
+
+×
+ e−sy
+1 +e−sy ℓy(s)
+2
+≤
+
+ℓy(s)2 +
+
+ X
+y′̸=y
+h−1(L)
+
+
+2
+ X
+y′̸=y
+eh−1(L)sy′
+
+
+2
+
+×
+ e−sy
+1 +e−sy ℓy(s)
+2
+=
+
+1 +
+
+ X
+y′̸=y
+h−1(L)
+
+
+2
+ ·
+ e−sy ℓy(s)
+1 +e−sy ℓy(s)
+2
+,
+(23)
+Therefore,
+18
+∥∇sLN T P(f, y)∥ ≤
+vuuut1+
+
+ X
+y′̸=y
+h−1(L)
+
+
+2
+e−sy ℓy(s)
+1 +e−sy ℓy(s)
+=
+vuuut1 +
+
+ X
+y′̸=y
+h−1(L)
+
+
+2
+ℓy(s)
+esy + ℓy(s)
+=
+vuuut1 +
+
+ X
+y′̸=y
+h−1(L)
+
+
+2 "
+1 − esy
+P
+y′ eh−1(L)sy′
+#
+=
+vuuut1 +
+
+ X
+y′̸=y
+h−1(L)
+
+
+2
+[1 − softmax (sy)] .
+(24)
+Since the score function is bounded, for any y ∈
+Y, there exists a constantBy(f ) such that By(f ) =
+inf x∈KAy sy, which completes the proof. Here
+we denote KAy (f ) as the inf x∈KAy f (x), then µ =
+r
+1 +
+P
+y′ ̸=y h−1(L)
+2 h
+1 − softmax
+
+KAy (f )
+i
+.
+19

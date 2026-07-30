@@ -1,0 +1,1057 @@
+GraphEval: A Knowledge-Graph Based LLM Hallucination
+Evaluation Framework
+Hannah Sansford1,*, Nicholas Richardson 2, Hermina Petric Maretic 2 and Juba Nait Saada 2
+1University of Bristol, UK
+2Amazon Science
+Abstract
+Methods to evaluate Large Language Model (LLM) responses and detect inconsistencies, also known as hallucinations, with
+respect to the provided knowledge, are becoming increasingly important for LLM applications. Current metrics fall short in
+their ability to provide explainable decisions, systematically check all pieces of information in the response, and are often too
+computationally expensive to be used in practice. We present GraphEval: a hallucination evaluation framework based on
+representing information in Knowledge Graph (KG) structures. Our method identifies the specific triples in the KG that are
+prone to hallucinations and hence provides more insight into where in the response a hallucination has occurred, if at all,
+than previous methods. Furthermore, using our approach in conjunction with state-of-the-art natural language inference
+(NLI) models leads to an improvement in balanced accuracy on various hallucination benchmarks, compared to using the raw
+NLI models. Lastly, we explore the use of GraphEval for hallucination correction by leveraging the structure of the KG, a
+method we name GraphCorrect, and demonstrate that the majority of hallucinations can indeed be rectified.
+Keywords
+Large Language Models, Knowledge Graphs, Hallucination Detection, Hallucination Correction
+1. Introduction
+As the size and power of LLMs have drastically increased
+over recent years, so has the number of potential appli-
+cations. Arguably, one of the biggest blockers to imple-
+menting these models in practice is their tendency to
+hallucinate - returning seemingly plausible, but untrue,
+responses. Here, we focus on the problem of detecting
+hallucinations with respect to the provided context that
+the LLM should use as its source of knowledge; detecting
+hallucinations that have deviated from the LLM’s original
+training data is out of the scope of this work. In appli-
+cations where certainty in a response is critical, such as
+medical diagnosis, the existence of hallucinations that
+arise from a given context is especially limiting. There-
+fore, it is of utmost importance to develop successful
+methods to detect these hallucinations and, when it is
+of interest to address or correct them, provide clarity on
+which aspect of the response is likely a hallucination.
+The importance of this issue is reflected in the amount of
+research being published on the topic - see Ji et al. [12]
+for a recent survey of this area.
+Performing evaluation on natural language is a challeng-
+ing task that researchers have been interested in long
+KiL’24: Workshop on Knowledge-infused Learning co-located with
+30th ACM KDD Conference, August 26, 2024, Barcelona, Spain
+*Work done during an internship with Amazon.
+/envel⌢pe-⌢penhannah.sansford@bristol.ac.uk (H. Sansford); nchls@amazon.es
+(N. Richardson); maretich@amazon.co.uk (H. Petric Maretic);
+jubans@amazon.co.uk (J. Nait Saada)
+© 2024 Copyright for this paper by its authors. Use permitted under Creative Commons License
+Attribution 4.0 International (CC BY 4.0).
+before hallucinations were at the forefront of the prob-
+lem. Methods have evolved a great deal from traditional
+N-gram based metrics, such as BLEU [ 26] and ROUGE
+[17], to much more intricate LLM-based evaluation met-
+rics with user-defined evaluation criteria, such as G-Eval
+[18]. More recently, techniques to mitigate the preva-
+lence of hallucinations in generated outputs leveraging
+Retrieval Augmented Generation (RAG) [ 16] and rea-
+soning on knowledge graphs (KGs) [ 19, 34] have been
+proposed. The former suggested the concatenation of rel-
+evant contextual data into the prompt to ground the LLM
+response, while the latter enforced a more robust reason-
+ing process through providing grounding information in
+KG structures [1]. As successful as these approaches have
+been, they do not fully circumvent the need to evaluate
+LLM outputs.
+Inspired by current research harnessing KGs to provide
+grounded LLM responses, we propose GraphEval - a hal-
+lucination detection framework based on the represen-
+tation of information in KG structures. To the best of
+our knowledge, we are the first to apply KGs to an LLM-
+based hallucination evaluation framework, and in doing
+so we provide a higher level of insight into where in
+the output a hallucination has occurred than any previ-
+ous metrics. Additionally, we demonstrate how using
+our method in conjunction with current state-of-the-art
+hallucination detection methods improves their classi-
+fication accuracy on various benchmarks. Finally, we
+consider the problem of hallucination correction and we
+introduce GraphCorrect, showcasing how GraphEval can
+arXiv:2407.10793v1  [cs.CL]  15 Jul 2024
+effectively be extended to rectify a significant proportion
+of hallucinations present in LLM outputs.
+2. Problem statement
+In this work we focus on the closed-domain hallucina-
+tion detection problem: the situation where we have a
+textual output from an LLM which is generated using
+some grounding context included in the prompt. In this
+case, the goal is for the LLM to use the provided context
+as its only source of knowledge. The open-domain prob-
+lem, which is with respect to all factual knowledge in
+the world, is not explored here but is briefly discussed in
+Section 8.
+We consider hallucination detection to be a binary classifi-
+cation problem, with 0 corresponding to the LLM output
+being factually consistent given the provided context,
+and 1 corresponding to the output containing at least
+one inconsistency. We can assess hallucination evalua-
+tion methods using a benchmarking dataset containing
+ground-truth labels (usually human-annotated) to de-
+termine whether a given context-output pair contains
+factual inconsistencies. Throughout the paper we use
+the terms factual, consistent, grounded and faithful in-
+terchangeably to mean containing no hallucinations with
+respect to the context.
+Finally, we explore the problem of hallucination correc-
+tion, wherein we do not use any directly labeled dataset.
+Instead, we utilize hallucination detection frameworks to
+first identify hallucinations to correct, and subsequently
+repurposing them to evaluate the corrected outputs. It is
+important to note that our exploration of hallucination
+correction only serves as an extension to our evaluation
+framework and is not the primary focus of this study.
+3. Related work
+Historically, N-gram based metrics such as BLEU [ 26]
+and ROUGE [17] have been the most widely used metrics
+for natural language evaluation. However, these met-
+rics have been shown to perform poorly at the task of
+factual inconsistency detection [21, 11]. In more recent
+years, embedding-based metrics such as BERTScore [35]
+have been favoured over N-gram based metrics. These
+methods measure the similarity between two pieces of
+text by comparing the contextualised embedding from a
+transformer model, such as BERT [3].
+Both N-gram and embedding-based metrics base their
+scores on how similar the text to be evaluated is to some
+reference text. This similarity objective often fails to cap-
+ture the intricacies of the hallucination detection problem.
+Therefore, researchers have begun to develop new meth-
+ods that are more acutely tuned to detecting inconsisten-
+cies between an LLM output and its grounding context.
+Maynez et al. [21] identified the crossover between the
+textual entailment score in NLI tasks and consistency pre-
+diction. This was a breakthrough at the time, producing
+higher correlation with faithfulness than any previous
+metrics, and paved the way for further research that cap-
+italised on NLI data and models [10, 15, 6].
+Very recently, attention has turned to leveraging LLMs
+themselves to evaluate the consistency of LLM outputs.
+SelfCheckGPT [20] and ChatProtect [24] approach the
+problem by considering the self-consistency within sam-
+pled outputs. Since they require the generation of a large
+number of responses from the LLM, many consider these
+methods prohibitively computationally expensive.
+Other LLM-based hallucination evaluation methods, such
+as G-Eval [18] and GPTScore [5], employ a different LLM
+for evaluation than the one used to generate the LLM
+response that needs to be evaluated. G-Eval allows user-
+defined evaluation criteria and uses automated chain-
+of-thought prompting and form-filling to assign scores.
+GPTScore treats the task as conditional generation, lever-
+aging models like GPT-3 to assign higher probabilities to
+high-quality outputs by prepending evaluation instruc-
+tions to the LLM prompt. Unlike NLI models trained on
+binary classification data, these methods produce scores
+that are harder to interpret as probabilities and often
+require additional steps for inconsistency classification.
+Recent hallucination detection methods, such as
+FactScore [ 23] and SAFE [ 32], utilize large language
+models to break down the response into atomic or in-
+dividual facts for evaluation. These approaches have
+enabled precise identification of where hallucinations oc-
+cur within the LLM response. Each fact is automatically
+verified against a comprehensive knowledge source like
+Wikipedia or scientific literature in the case of FactScore,
+or through the use of a search engine in the case of SAFE.
+FactGraph [28] is the only factuality evaluation method
+we are aware of that utilises graph-like structures. The
+method is focused solely on the detection of inconsisten-
+cies in the summarization problem, decomposing both
+the summary and the supporting documents into what
+they call structuredmeaning representations (MRs). These
+MRs describe the core semantic concepts and relations,
+which the authors claim to be more suitable for factuality
+evaluation than the raw text.
+Figure 1: A visualisation of the GraphEval approach. First, the LLM output is fed into the KG construction prompt to produce
+the KG depicted on the right. Next, each individual triple in the KG is fed into an out-of-the-box hallucination detection
+method, such as an NLI model, and compared to the provided context for inconsistencies. Finally, any triples that are flagged
+as inconsistent are returned to the user, along with the overall hallucination decision.
+4. GraphEval: Our evaluation
+method
+GraphEval is based around the idea of representing infor-
+mation in a structured manner through KGs, and aims to
+address the lack of explainability of previous hallucina-
+tion detection approaches, i.e. which concrete pieces of
+information in particular are inconsistent.
+Formally, a KG is a collection of triples 𝒦𝒢 =
+{(𝑒1, 𝑟, 𝑒2) ⊆ ℰ×ℛ×ℰ} , whereℰ andℛ denote
+the set of entities and relationships, respectively. In the
+GraphEval setting, both entities and relationships are
+simply pieces of text. We do not make use of common
+extensions to this simple setting, such as entity and rela-
+tionship types, or attached properties.
+Our GraphEval metric consists of a two-stage procedure:
+Stage 1 - Construct a KG from the LLM output
+to be evaluated.
+Stage 2 - Iterate through each of the triples in
+the KG, identifying whether they are factually
+consistent given the provided context.
+The output is considered factually inconsistent if any of
+the triples in stage 2 are identified as not grounded in the
+context. The inconsistent triple(s) may also be returned
+to provide explainability by highlighting where in the
+output the hallucination(s) has occurred. We provide
+a visualisation of this process in Figure 1 using a real
+example from one of the benchmarks described in Section
+7.1.
+Regarding stage 1, we provide a short review of LLM-
+based KG construction methods in Section 5, along with
+results from our implementation. For stage 2, we leverage
+existing techniques and employ an out-of-the-box NLI
+model for this task. A benefit of this approach is that it
+gives us the opportunity to make a direct comparison
+between the performance of the raw NLI model and the
+model supplemented with our KG approach. In essence,
+our method is a pre-processing step, the output of which
+can be fed into any hallucination detection method; we
+choose NLI models as they are computationally cheap
+compared to LLM-based models, yet still achieve state-of-
+the-art results. By feeding each triple into an NLI model,
+along with the grounding context, we obtain a probability
+of containing a hallucination for each triple. Finally, we
+classify the example as inconsistent if at least one triple
+produces a probability greater than 0.5.
+Similar approaches to ours have been proposed in re-
+cent literature. SummaC [15] also uses NLI-based models
+to detect inconsistencies in LLM-generated summaries.
+However, it distinguishes itself by segmenting both the
+context and the summary into their respective sentences,
+and then by passing each context-summary pair into the
+NLI model. This approach presents challenges in main-
+Benchmark No. of Examples Label Ratio Avg Output len. Avg Context len.
+SummEval 1,600 33.2% 63 359
+QAGS-C 235 48.1% 49 383
+QAGS-X 239 48.5% 18 318
+Table 1
+Statistics relating to the evaluation benchmarks used. The label ratio is the ratio of factually consistent examples to inconsistent
+examples. The average output and context length are the average number of words in each.
+taining entity references across sentences; for instance,
+"John Doe" may only be referred to as "he" in another
+sentence. Similarly, FactScore [23] faces the same limita-
+tion. Our method circumvents this issue by organising
+entity relationships with a KG.
+While FactGraph [28] also makes use of graph structures
+in their consistency evaluation process, the method dif-
+fers from GraphEval in a few major respects. Firstly,
+their approach can only be applied to the summarisation
+problem; whereas GraphEval can easily be applied to
+various domains such as Summarisation, Question An-
+swering, Common Sense Reasoning and many others.
+Secondly, FactGraph does not employ LLMs anywhere in
+their framework, missing out on recent advances in the
+field. Finally, their approach aims to decompose both the
+LLM output and the provided context into the underlying
+core semantic concepts and relations, before comparing
+each of the graph structures. GraphEval, on the other
+hand, only represents the LLM output as a KG and aims
+to preserve as much of the information contained in the
+raw text as possible.
+To summarise the advantages of GraphEval over previous
+methods:
+• We present a systematic way of checking all
+pieces of information contained in the LLM out-
+put.
+• Our method only requires one call to an LLM, in
+the KG construction phase, and does not require
+the (usually) large context documents to be input,
+as in all previous LLM-based metrics. This makes
+GraphEval less computationally expensive than
+other LLM-based methods.
+• Our method returns the specific triples that are
+not grounded in the context, providing explain-
+ability for the decision and identifying which sec-
+tion of the output should not be trusted. We lever-
+age this feature for hallucination correction and
+propose a new method called GraphCorrect, de-
+scribed in Section 6.
+5. Construction of KGs using LLMs
+Constructing KGs from unstructured textual data in-
+volves identifying the set of entities within the text and
+the relationships between them, resulting in a structured
+representation of the information contained within the
+text. The process can be divided into three main stages:
+1. Entity detection - the process of identifying and
+extracting entities from text.
+2. Coreference resolution - the process of finding
+of all expressions (also called mentions) in the text
+that refer to the same entity.
+3. Relation extraction - the process of identifying
+semantic relationships between entities.
+Previously, researchers addressed each stage individually,
+but with the increasing power of LLMs, there’s been a
+shift towards end-to-end systems. Kumar et al. [14] sug-
+gest employing two LLM components: one for named
+entity recognition and another one for both relation clas-
+sification and direction. Similarly, Grapher [22] utilizes a
+pre-trained LLM for entity extraction and relation predic-
+tion. However, these methods require users to provide
+possible relations. More recent methods like PiVE [ 7]
+and AutoKG [37] use LLM prompting strategies for KG
+construction without additional user input.
+The aforementioned methods do not make use of some of
+the emergent abilities of LLMs, such as in-context learn-
+ing and the chain-of thought prompting strategy. We
+decide to leverage these emergent abilities, and take a
+simple prompt engineering approach to our KG construc-
+tion step. The techniques used can be summarised as the
+following:
+• Chain-of-thought (CoT) prompting strategy. Pro-
+viding intermediate reasoning steps in the prompt
+to enable LLMs to solve more complex tasks.
+• In-context learning. A method of prompt engi-
+neering where one provides several task demon-
+strations within the prompt, circumventing the
+need for fine-tuning.
+The final prompt used in our experiments can be found
+in the Appendix. We highlight to the reader that our KG
+construction method is not the main contribution of our
+work, which is rather the application of KG construction
+to the hallucination detection problem. The major benefit
+of our KG construction approach is its ease of implemen-
+tation with any LLM. Furthermore, it is less computation-
+ally intensive than methods like PiVE, which performs
+multiple iterations of improvements to the generated KG.
+Of course, users may conduct the KG construction stage
+of GraphEval using their method of choice; the exper-
+iments in this paper exhibit the capability of a simple
+prompting strategy.
+6. GraphCorrect: Correction of
+hallucinations with GraphEval
+While the primary focus of this work lies in hallucination
+detection, GraphEval’s breakdown of LLM outputs into
+triples easily allows for its extension to correct hallucina-
+tions within the given context. To achieve this, we first
+identify all triples within the KG that are likely to con-
+tain hallucinations (i.e. those with a probability greater
+than 0.5, if any). We then employ the following two-step
+procedure on each identified triple:
+Step 1 - Input the given triple along with the
+context into an LLM to correct for the potential
+hallucinations within the triple. This results in a
+newly generated corrected triple.
+Step 2 - Input the identified triple, its corrected
+counterpart and the initial LLM output. Selec-
+tively replace the information from the original
+(hallucination-containing) triple with the infor-
+mation from the new triple in the initial LLM
+output.
+We name this LLM hallucination correction method as
+GraphCorrect. The final prompts used in our experiments
+for both step 1 and step 2 can be found in the Appendix B
+and C respectively. This systematic approach to halluci-
+nation correction offers several benefits. First, it tackles
+each identified hallucination separately, increasing the
+chances of all perceived hallucinations being corrected.
+Furthermore, it offers the advantage of exclusively alter-
+ing the segments of the original text that are suspected
+to contain a hallucination, leaving other elements un-
+touched and ensuring overall high similarity with the
+original text. Finally, breaking down the entire process
+into intermediate steps ensures that the original context
+and the initial LLM output never undergo simultaneous
+processing within an LLM. This guarantees safeguards
+against both the addition of extra information and the
+loss of information in the LLM output.
+7. Experiments
+7.1. Benchmarks
+We conducted two sets of experiments: one focusing on
+hallucination detection to highlight GraphEval’s perfor-
+mance and another on hallucination correction to show-
+case the advantages of GraphCorrect. For both scenarios,
+we utilized the SummEval [ 4], QAGS-C and QAGS-X
+[31] benchmarks - currently the most prevalent bench-
+marks in relevant academic literature. All three are con-
+cerned with detecting hallucinations in LLM-generated
+summaries and are human-annotated for factual con-
+sistency with respect to the grounding context. Table
+1 contains some statistics pertaining to each of these
+datasets.
+SummEval The SummEval dataset consists of human
+evaluations on 16 summarization model outputs from
+100 articles from the CNN/DailyMail dataset [9]. Each
+summary is labelled on a Likert scale from 1-5 on 4 cat-
+egories: consistency, coherence, fluency and relevance.
+We follow the TRUE benchmark [10] in taking the con-
+sistency scores and mapping a score of 5 to being fully
+consistent, and anything lower to being inconsistent.
+QAGS The QAGS-C and QAGS-X datasets are built
+from the CNN/DailyMail and the XSum [ 25] datasets,
+respectively. The human annotators examined the sum-
+maries one sentence at a time, and determined the factual
+consistency of each sentence comparing it to the original
+article. Three annotators assessed each sentence and the
+majority decision was recorded. Again, we follow the
+TRUE benchmark in considering a summary to be factu-
+ally consistent if and only if all sentences are considered
+consistent.
+7.2. NLI models in GraphEval
+As mentioned in Section 4, we employ NLI models to
+perform the second stage of GraphEval - checking the
+consistency of each individual triple with respect to the
+context. We conduct experiments using the three most
+popular NLI-based hallucination detection models avail-
+able on HuggingFace 1.
+HHEM Based on the DeBERTaV3 model [ 8] and ini-
+tially trained on NLI data, the hallucination evaluation
+model created by Vectara 2 is further fine-tuned on
+datasets annotated for consistency. The datasets used
+1https://huggingface.co
+2https://huggingface.co/vectara/hallucination_evaluation_model
+for fine tuning were: FEVER [ 30], Vitamin C [ 29] and
+PAWS [36]. This model is considerably smaller than the
+following two models, requiring only 738 MB of memory,
+and thus has a significantly shorter run-time.
+TRUE The TRUE model is based on a T5-XXL model
+[27] and is trained similarly to the model described in
+the TRUE paper [10]. Instead of the ANLI dataset used
+in that paper, this model is trained on the same datasets
+as HHEM, plus the following: SNLI [2], MNLI [33] and
+Scitail [13]. This model requires 45.5 GB of memory.
+TrueTeacher Gekhman et al. [6] leverage the ability of
+LLMs to evaluate hallucinations by generating synthetic
+data through annotating model-generated summaries.
+They then use this synthetic data to further fine-tune the
+model from [10], leading to state-of-the-art performance
+on the TRUE benchmark. This model is the same size as
+the TRUE model.
+7.3. Experimental settings
+In all experiments conducted in this study necessitating
+the utilization of an LLM, we use Claude 2 3, an LLM
+from Anthropic, through the Amazon Bedrock API 4. We
+use the default settings for the LLM: temperature = 1,
+top_p = 1, top_k = 250. We also refer the reader to the
+Appendix for the prompts used in this work.
+7.4. Results
+7.4.1. Hallucination detection with GraphEval
+We present our results of hallucination detection for the
+three NLI models, and their GraphEval counterparts, in
+Table 2. We report the balanced accuracy as our evalu-
+ation metric, which corrects for the class imbalance in
+the SummEval benchmark. In the case of using the NLI
+model directly, we classify the example as containing a
+hallucination if the NLI model returns a probability of
+more than 0.5. When combining the NLI model with
+GraphEval, we classify the example as containing a hallu-
+cination if at least one triple fed to the NLI model returns
+a probability of more than 0.5. We see that adding the
+GraphEval pre-processing step to each of the NLI mod-
+els almost always improves the balanced accuracy score,
+sometimes by a considerable amount, such as the results
+for the SummEval and QAGS-C benchmarks in Table
+2. On average (weighting by the number of samples in
+each dataset), adding the GraphEval pre-processing step
+improves the balanced accuracy by 6.2 (SE=1.3).
+3https://www.anthropic.com/news/claude-2
+4https://aws.amazon.com/bedrock/claude/
+SummEval QAGS-C QAGS-X
+HHEM 66.0 63.5 75.5
+HHEM + GraphEval 71.5 72.2 75.2
+TRUE 61.3 61.8 72.6
+TRUE + GraphEval 72.4 71.7 73.9
+TrueTeacher 74.9 75.6 79.0
+TrueTeacher + GraphEval 79.2 78.1 79.6
+Table 2
+Balanced accuracy scores for hallucination detection of NLI
+models (HHEM, TRUE, TrueTeacher) and their GraphEval
+counterparts on the SummEval, QAGS-C and QAGS-X bench-
+marks.
+We hypothesise that the negligible difference between
+the base NLI model and the model supplemented with
+GraphEval for the QAGS-X dataset is due to the average
+length of the generated text (only 18 words, compared
+with 49 and 63 for QAGS-C and SummEval respectively,
+see 1). This highlights an important aspect of where the
+most value can be found in our method. When the LLM
+output is very short, there are less likely to be multiple
+facts that need to be checked for consistency (which
+can easily be done without the use of a KG) and the
+intricacies of the short sentence might even be lost in
+the KG construction phase. On the other hand, when the
+LLM output is very long, current methods struggle to
+test each individual fact against the context, and this is
+when GraphEval thrives.
+It should be noted that even when the results for GraphE-
+val are comparable to the baseline methods, the benefit
+of using GraphEval is the identification of the specific
+triple(s) that are inconsistent with the provided context.
+7.4.2. Hallucination correction with GraphCorrect
+Identifying the particular triple(s) likely to harbor a hallu-
+cination enables straightforward correction using Graph-
+Correct, as described in Section 6. For each of the evalu-
+ation frameworks proposed here (HHEM + GraphEval,
+TRUE + GraphEval, and TrueTeacher + GrapEval), we
+compared GraphCorrect to a basic prompting strategy
+for hallucination correction, serving as a baseline. The
+prompt used in this baseline approach, referred to as the
+Direct Prompt henceforth, is provided in Appendix D.
+For each framework, we initially identify hallucinations,
+correct only the LLM outputs suspected of containing hal-
+lucinations using either GraphCorrect or Direct Prompt,
+and then reapply the evaluation framework to detect hal-
+lucinations in the corrected LLM outputs. Note that this
+procedure only allows us to measure what we presume to
+be corrected hallucinations, given the potential for errors
+in the evaluation frameworks utilized here. We report the
+Detection Dataset ROUGE-1 ROUGE-2 ROUGE-L
+Direct Prompt GraphCorrect Direct Prompt GraphCorrect Direct Prompt GraphCorrect
+HHEM + GraphEval
+SummEval 0.827 0.915 0.772 0.879 0.796 0.910
+QAGS-C 0.800 0.893 0.735 0.841 0.769 0.885
+QAGS-X 0.649 0.821 0.495 0.734 0.606 0.815
+TRUE + GraphEval
+SummEval 0.781 0.880 0.707 0.833 0.746 0.871
+QAGS-C 0.840 0.894 0.780 0.848 0.808 0.886
+QAGS-X 0.651 0.805 0.505 0.706 0.613 0.795
+TrueTeacher + GraphEval
+SummEval 0.781 0.884 0.703 0.839 0.737 0.876
+QAGS-C 0.809 0.889 0.743 0.837 0.781 0.881
+QAGS-X 0.643 0.797 0.486 0.694 0.598 0.784
+Table 3
+Average ROUGE-1, ROUGE-2 and ROUGE-L scores measuring similarity between original and corrected summaries using
+Direct Prompt and GraphCorrect across different datasets and hallucination detection frameworks.
+percentage of believed corrected hallucinations in Table
+4. A score of 0% suggests no corrected hallucinations
+according to the given framework, while a score of 100%
+indicates correction of all hallucinations as per the given
+framework. GraphCorrect outperforms the prompting
+strategy proposed here by significantly correcting for
+more hallucinations on all tasks apart from two related
+to the QAGS-X dataset. As on the hallucination detection
+task, we hypothesise these results are correlated with the
+average length of the text, with GraphCorrect bringing
+most value in longer texts with a more complex structure
+to unravel and correct.
+Additionally, as previously stated, GraphCorrect offers
+the advantage of only modifying the segments of text
+in the LLM outputs susceptible to hallucinations, while
+leaving other sections unaltered, thereby maintaining
+high overall similarity with the original text. This charac-
+teristic is illustrated in Table 3 by assessing the ROUGE-1,
+ROUGE-2, and ROUGE-L metrics between the original
+Detection & Evaluation Dataset Method for Correction
+Direct Prompt GraphCorrect
+HHEM + GraphEval
+SummEval 48.6 55.1
+QAGS-C 38.5 58.7
+QAGS-X 63.2 69.5
+TRUE + GraphEval
+SummEval 49.6 59.5
+QAGS-C 42.7 53.7
+QAGS-X 70.8 66.7
+TrueTeacher + GraphEval
+SummEval 53.1 59.8
+QAGS-C 47.1 59.6
+QAGS-X 71.1 69.3
+Table 4
+Percentage of believed corrected hallucinations using a di-
+rect prompting strategy and GraphCorrect on the SummEval,
+QAGS-C and QAGS-X benchmarks. The hallucinations were
+first detected by HHEM + GraphEval, TRUE + GraphEval and
+TrueTeacher + GraphEval respectively, and then corrections
+were evaluated by the same metric.
+summaries and the corrected versions for both GraphCor-
+rect and Direct Prompt across all experimental scenarios
+examined in this study. GraphCorrect systematically gen-
+erates texts that are closer in similarity to the original
+LLM outputs compared to its counterpart.
+8. Discussion
+Our work focuses on detection of hallucinations in closed-
+domain tasks, where we are interested only in consis-
+tency with respect to the provided context. The GraphE-
+val framework could be extended to open-domain halluci-
+nation detection by employing agents, as in AutoKG [37],
+to first retrieve relevant external sources as the grounding
+information to check against.
+We expect that in the near future, more research will be
+conducted on the construction of KGs from unstructured
+text, which will provide improvements to the first stage of
+our procedure and ultimately the evaluation performance.
+Even as LLMs alone become more powerful, this will
+continue to contribute to improvements in GraphEval’s
+performance.
+We observe that, in the knowledge graph construction
+phase of our procedure, it is possible that some informa-
+tion loss may occur. However, as shown by the results
+in Section 7.4, our method rarely leads to a reduction in
+balanced accuracy. Furthermore, when it is comparable
+to the baseline methods, we have the added explainability
+of identifying the specific triples where the hallucination
+has occurred.
+We believe our hallucination correction framework
+(GraphCorrect) shows promise and an interesting av-
+enue for future work. However, the effectiveness of the
+approach described in this work should be assessed man-
+ually, rather than relying on the convoluted use of hallu-
+cination evaluation frameworks (which only yield mea-
+surements of believed corrected hallucinations).
+9. Conclusion
+We introduce GraphEval, a simple and effective pre-
+processing step for improving the explainability and per-
+formance of LLM hallucination detection metrics. Our
+method leverages LLM’s ability to extract information
+from unstructured text and construct knowledge graphs,
+whose triples can be fed into out-of-the-box hallucination
+detection methods.
+We demonstrate that GraphEval in conjunction with
+state-of-the-art NLI models leads to an average improve-
+ment in balanced accuracy of 6.2 (SE=1.3) on three popu-
+lar hallucination benchmarks. Furthermore, our method
+indicates which triples, in the KG representation of the
+LLM output, are inconsistent. To the best of our knowl-
+edge, this is the first application of KGs to an LLM-based
+hallucination evaluation framework and we believe the
+success of GraphEval will only grow as KG construction
+methods also improve.
+Finally, we examined the issue of hallucination correction
+and showed that GraphCorrect can effectively address the
+majority of hallucinations found in LLM outputs while
+maintaining extremely high similarity with the original
+texts.
+References
+[1] Garima Agrawal, Tharindu Kumarage, Zeyad Al-
+ghamdi, and Huan Liu. 2024. Can Knowledge
+Graphs Reduce Hallucinations in LLMs? : A Survey.
+arXiv:2311.07914 [cs.CL]
+[2] Samuel R. Bowman, Gabor Angeli, Christopher
+Potts, and Christopher D. Manning. 2015. A large
+annotated corpus for learning natural language in-
+ference. In Proceedings of the 2015 Conference on
+Empirical Methods in Natural Language Process-
+ing, Lluís Màrquez, Chris Callison-Burch, and Jian
+Su (Eds.). Association for Computational Linguis-
+tics, Lisbon, Portugal, 632–642. https://doi.org/10.
+18653/v1/D15-1075
+[3] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and
+Kristina Toutanova. 2019. BERT: Pre-training of
+Deep Bidirectional Transformers for Language Un-
+derstanding. In Proceedings of the 2019 Conference
+of the North American Chapter of the Association
+for Computational Linguistics: Human Language
+Technologies, Volume 1 (Long and Short Papers), Jill
+Burstein, Christy Doran, and Thamar Solorio (Eds.).
+Association for Computational Linguistics, Min-
+neapolis, Minnesota, 4171–4186. https://doi.org/10.
+18653/v1/N19-1423
+[4] A. R. Fabbri, Wojciech Kryscinski, Bryan McCann,
+Richard Socher, and Dragomir R. Radev. 2020.
+SummEval: Re-evaluating Summarization Evalu-
+ation. Transactions of the Association for Com-
+putational Linguistics 9 (2020), 391–409. https:
+//api.semanticscholar.org/CorpusID:220768873
+[5] Jinlan Fu, See-Kiong Ng, Zhengbao Jiang, and
+Pengfei Liu. 2023. GPTScore: Evaluate as You De-
+sire. arXiv:2302.04166 [cs.CL]
+[6] Zorik Gekhman, Jonathan Herzig, Roee Aharoni,
+Chen Elkind, and Idan Szpektor. 2023. TrueTeacher:
+Learning Factual Consistency Evaluation with
+Large Language Models. arXiv:2305.11171 [cs.CL]
+[7] Jiuzhou Han, Nigel Collier, Wray Buntine, and
+Ehsan Shareghi. 2023. Pive: Prompting with itera-
+tive verification improving graph-based generative
+capability of llms. arXiv preprint arXiv:2305.12392
+(2023).
+[8] Pengcheng He, Xiaodong Liu, Jianfeng Gao, and
+Weizhu Chen. 2021. DEBERTA: DECODING-
+ENHANCED BERT WITH DISENTANGLED AT-
+TENTION. In International Conference on Learning
+Representations. https://openreview.net/forum?id=
+XPZIaotutsD
+[9] Karl Moritz Hermann, Tomas Kocisky, Edward
+Grefenstette, Lasse Espeholt, Will Kay, Mustafa Su-
+leyman, and Phil Blunsom. 2015. Teaching ma-
+chines to read and comprehend. Advances in neural
+information processing systems 28 (2015).
+[10] Or Honovich, Roee Aharoni, Jonathan Herzig, Ha-
+gai Taitelbaum, Doron Kukliansy, Vered Cohen,
+Thomas Scialom, Idan Szpektor, Avinatan Hassidim,
+and Yossi Matias. 2022. TRUE: Re-evaluating Fac-
+tual Consistency Evaluation. In Proceedings of the
+Second DialDoc Workshop on Document-grounded
+Dialogue and Conversational Question Answering ,
+Song Feng, Hui Wan, Caixia Yuan, and Han Yu
+(Eds.). Association for Computational Linguistics,
+Dublin, Ireland, 161–175. https://doi.org/10.18653/
+v1/2022.dialdoc-1.19
+[11] Or Honovich, Leshem Choshen, Roee Aharoni, Ella
+Neeman, Idan Szpektor, and Omri Abend. 2021.
+𝑄2: Evaluating Factual Consistency in Knowledge-
+Grounded Dialogues via Question Generation and
+Question Answering. In Proceedings of the 2021
+Conference on Empirical Methods in Natural Lan-
+guage Processing, Marie-Francine Moens, Xuanjing
+Huang, Lucia Specia, and Scott Wen-tau Yih (Eds.).
+Association for Computational Linguistics, Online
+and Punta Cana, Dominican Republic, 7856–7870.
+https://doi.org/10.18653/v1/2021.emnlp-main.619
+[12] Ziwei Ji, Nayeon Lee, Rita Frieske, Tiezheng Yu,
+Dan Su, Yan Xu, Etsuko Ishii, Ye Jin Bang, Andrea
+Madotto, and Pascale Fung. 2023. Survey of Halluci-
+nation in Natural Language Generation. ACM Com-
+put. Surv. 55, 12, Article 248 (mar 2023), 38 pages.
+https://doi.org/10.1145/3571730
+[13] Tushar Khot, Ashish Sabharwal, and Peter Clark.
+2018. SciTail: A Textual Entailment Dataset from
+Science Question Answering. In AAAI.
+[14] Abhijeet Kumar, Abhishek Pandey, Rohit Gadia,
+and Mridul Mishra. 2020. Building Knowledge
+Graph using Pre-trained Language Model for Learn-
+ing Entity-aware Relationships. In 2020 IEEE Inter-
+national Conference on Computing, Power and Com-
+munication Technologies (GUCON). 310–315. https:
+//doi.org/10.1109/GUCON48875.2020.9231227
+[15] Philippe Laban, Tobias Schnabel, Paul N. Bennett,
+and Marti A. Hearst. 2022. SummaC: Re-Visiting
+NLI-based Models for Inconsistency Detection in
+Summarization. Transactions of the Association for
+Computational Linguistics 10 (2022), 163–177. https:
+//doi.org/10.1162/tacl_a_00453
+[16] Patrick Lewis, Ethan Perez, Aleksandra Piktus,
+Fabio Petroni, Vladimir Karpukhin, Naman Goyal,
+Heinrich Küttler, Mike Lewis, Wen-tau Yih, Tim
+Rocktäschel, et al. 2020. Retrieval-augmented gener-
+ation for knowledge-intensive nlp tasks. Advances
+in Neural Information Processing Systems 33 (2020),
+9459–9474.
+[17] Chin-Yew Lin. 2004. ROUGE: A Package for Au-
+tomatic Evaluation of Summaries. In Text Summa-
+rization Branches Out . Association for Computa-
+tional Linguistics, Barcelona, Spain, 74–81. https:
+//aclanthology.org/W04-1013
+[18] Yang Liu, Dan Iter, Yichong Xu, Shuohang Wang,
+Ruochen Xu, and Chenguang Zhu. 2023. G-Eval:
+NLG Evaluation using Gpt-4 with Better Human
+Alignment. In Proceedings of the 2023 Conference on
+Empirical Methods in Natural Language Processing,
+Houda Bouamor, Juan Pino, and Kalika Bali (Eds.).
+Association for Computational Linguistics, Singa-
+pore, 2511–2522. https://doi.org/10.18653/v1/2023.
+emnlp-main.153
+[19] Linhao Luo, Yuan-Fang Li, Gholamreza Haffari, and
+Shirui Pan. 2023. Reasoning on graphs: Faithful
+and interpretable large language model reasoning.
+arXiv preprint arXiv:2310.01061 (2023).
+[20] Potsawee Manakul, Adian Liusie, and Mark JF Gales.
+2023. Selfcheckgpt: Zero-resource black-box hal-
+lucination detection for generative large language
+models. arXiv preprint arXiv:2303.08896 (2023).
+[21] Joshua Maynez, Shashi Narayan, Bernd Bohnet, and
+Ryan McDonald. 2020. On Faithfulness and Factual-
+ity in Abstractive Summarization. In Proceedings of
+the 58th Annual Meeting of the Association for Com-
+putational Linguistics, Dan Jurafsky, Joyce Chai, Na-
+talie Schluter, and Joel Tetreault (Eds.). Association
+for Computational Linguistics, Online, 1906–1919.
+https://doi.org/10.18653/v1/2020.acl-main.173
+[22] Igor Melnyk, Pierre Dognin, and Payel Das. 2021.
+Grapher: Multi-Stage Knowledge Graph Construc-
+tion using Pretrained Language Models. In NeurIPS
+2021 Workshop on Deep Generative Models and
+Downstream Applications. https://openreview.net/
+forum?id=N2CFXG8-pRd
+[23] Sewon Min, Kalpesh Krishna, Xinxi Lyu, Mike
+Lewis, Wen-tau Yih, Pang Wei Koh, Mohit Iyyer,
+Luke Zettlemoyer, and Hannaneh Hajishirzi. 2023.
+Factscore: Fine-grained atomic evaluation of fac-
+tual precision in long form text generation. arXiv
+preprint arXiv:2305.14251 (2023).
+[24] Niels Mündler, Jingxuan He, Slobodan Jenko, and
+Martin Vechev. 2024. Self-contradictory Halluci-
+nations of Large Language Models: Evaluation,
+Detection and Mitigation. In The Twelfth Inter-
+national Conference on Learning Representations .
+https://openreview.net/forum?id=EmQSOi1X2f
+[25] Shashi Narayan, Shay B. Cohen, and Mirella Lapata.
+2018. Don’t Give Me the Details, Just the Summary!
+Topic-Aware Convolutional Neural Networks for
+Extreme Summarization. In Proceedings of the 2018
+Conference on Empirical Methods in Natural Lan-
+guage Processing, Ellen Riloff, David Chiang, Julia
+Hockenmaier, and Jun’ichi Tsujii (Eds.). Association
+for Computational Linguistics, Brussels, Belgium,
+1797–1807. https://doi.org/10.18653/v1/D18-1206
+[26] Kishore Papineni, Salim Roukos, Todd Ward, and
+Wei-Jing Zhu. 2002. Bleu: a Method for Auto-
+matic Evaluation of Machine Translation. In Pro-
+ceedings of the 40th Annual Meeting of the Associa-
+tion for Computational Linguistics, Pierre Isabelle,
+Eugene Charniak, and Dekang Lin (Eds.). Associ-
+ation for Computational Linguistics, Philadelphia,
+Pennsylvania, USA, 311–318. https://doi.org/10.
+3115/1073083.1073135
+[27] Colin Raffel, Noam Shazeer, Adam Roberts, Kather-
+ine Lee, Sharan Narang, Michael Matena, Yanqi
+Zhou, Wei Li, and Peter J. Liu. 2020. Exploring the
+Limits of Transfer Learning with a Unified Text-to-
+Text Transformer. Journal of Machine Learning Re-
+search 21, 140 (2020), 1–67. http://jmlr.org/papers/
+v21/20-074.html
+[28] Leonardo F. R. Ribeiro, Mengwen Liu, Iryna
+Gurevych, Markus Dreyer, and Mohit Bansal.
+2022. FactGraph: Evaluating Factuality in Sum-
+marization with Semantic Graph Representations.
+arXiv:2204.06508 [cs.CL]
+[29] Tal Schuster, Adam Fisch, and Regina Barzilay.
+2021. Get Your Vitamin C! Robust Fact Verifica-
+tion with Contrastive Evidence. In Proceedings of
+the 2021 Conference of the North American Chap-
+ter of the Association for Computational Linguis-
+tics: Human Language Technologies . Association
+for Computational Linguistics, Online, 624–643.
+https://doi.org/10.18653/v1/2021.naacl-main.52
+[30] James Thorne, Andreas Vlachos, Oana Cocarascu,
+Christos Christodoulopoulos, and Arpit Mittal.
+2018. The FEVER2.0 Shared Task. In Proceedings of
+the Second Workshop on Fact Extraction and VERifi-
+cation (FEVER).
+[31] Alex Wang, Kyunghyun Cho, and Mike Lewis. 2020.
+Asking and Answering Questions to Evaluate the
+Factual Consistency of Summaries. InProceedings of
+the 58th Annual Meeting of the Association for Com-
+putational Linguistics, Dan Jurafsky, Joyce Chai, Na-
+talie Schluter, and Joel Tetreault (Eds.). Association
+for Computational Linguistics, Online, 5008–5020.
+https://doi.org/10.18653/v1/2020.acl-main.450
+[32] Jerry Wei, Chengrun Yang, Xinying Song, Yifeng
+Lu, Nathan Hu, Dustin Tran, Daiyi Peng, Ruibo
+Liu, Da Huang, Cosmo Du, et al. 2024. Long-form
+factuality in large language models. arXiv preprint
+arXiv:2403.18802 (2024).
+[33] Adina Williams, Nikita Nangia, and Samuel Bow-
+man. 2018. A Broad-Coverage Challenge Corpus
+for Sentence Understanding through Inference. In
+Proceedings of the 2018 Conference of the North
+American Chapter of the Association for Computa-
+tional Linguistics: Human Language Technologies,
+Volume 1 (Long Papers), Marilyn Walker, Heng Ji,
+and Amanda Stent (Eds.). Association for Compu-
+tational Linguistics, New Orleans, Louisiana, 1112–
+1122. https://doi.org/10.18653/v1/N18-1101
+[34] Linyao Yang, Hongyang Chen, Zhao Li, Xiao Ding,
+and Xindong Wu. 2024. Give us the facts: Enhanc-
+ing large language models with knowledge graphs
+for fact-aware language modeling. IEEE Transac-
+tions on Knowledge and Data Engineering (2024).
+[35] Tianyi Zhang*, Varsha Kishore*, Felix Wu*, Kilian Q.
+Weinberger, and Yoav Artzi. 2020. BERTScore:
+Evaluating Text Generation with BERT. In Inter-
+national Conference on Learning Representations .
+https://openreview.net/forum?id=SkeHuCVFDr
+[36] Yuan Zhang, Jason Baldridge, and Luheng He. 2019.
+PAWS: Paraphrase Adversaries from Word Scram-
+bling. In Proc. of NAACL.
+[37] Yuqi Zhu, Xiaohan Wang, Jing Chen, Shuofei Qiao,
+Yixin Ou, Yunzhi Yao, Shumin Deng, Huajun Chen,
+and Ningyu Zhang. 2023. Llms for knowledge
+graph construction and reasoning: Recent capa-
+bilities and future opportunities. arXiv preprint
+arXiv:2305.13168 (2023).
+A. KG Construction Prompt
+( " system " ,
+" " "
+You a r e an e x p e r t a t e x t r a c t i n g
+i n f o r m a t i o n i n
+s t r u c t u r e d f o r m a t s t o b u i l d a
+knowledge graph .
+S t e p 1 − E n t i t y d e t e c t i o n : I d e n t i f y
+a l l e n t i t i e s i n t h e raw t e x t .
+Make s u r e not t o miss any out .
+E n t i t i e s s h o u l d be b a s i c and
+simple , they a r e a k i n t o
+W i k i p e d i a nodes .
+S t e p 2 − C o r e f e r e n c e r e s o l u t i o n : F i n d
+a l l e x p r e s s i o n s i n t h e t e x t t h a t
+r e f e r t o t h e same e n t i t y . Make
+s u r e e n t i t i e s a r e not d u p l i c a t e d .
+I n p a r t i c u l a r do not i n c l u d e
+e n t i t i e s t h a t a r e more s p e c i f i c
+v e r s i o n s t h e m s e l v e s , e . g . " a
+d e t a i l e d view o f j u p i t e r ’ s
+atmosphere " and " j u p i t e r ’ s
+atmosphere " , only i n c l u d e t h e
+most s p e c i f i c v e r s i o n o f t h e
+e n t i t y .
+S t e p 3 − R e l a t i o n e x t r a c t i o n :
+I d e n t i f y s e m a n t i c r e l a t i o n s h i p s
+between t h e e n t i t i e s you have
+i d e n t i f i e d .
+Format : Return t h e knowledge graph as
+a l i s t o f t r i p l e s , i . e . [ " e n t i t y
+1 " , " r e l a t i o n 1 −2 " , " e n t i t y 2 " ] ,
+i n Python code .
+" " " ,
+) ,
+( " human " ,
+" Use t h e g i v e n f o r m a t t o e x t r a c t
+i n f o r m a t i o n from t h e
+f o l l o w i n g i n p u t : < input > {
+i n p u t } < / input > . S k i p t h e
+preamble and o u t p u t t h e
+r e s u l t as a l i s t w i t h i n <
+python > </ python > t a g s . " ,
+) ,
+( " human " ,
+" " " I m p o r t a n t T i p s :
+1 . Make s u r e a l l i n f o r m a t i o n
+i s i n c l u d e d i n t h e
+knowledge graph .
+2 . Each t r i p l e must only
+c o n t a i n t h r e e s t r i n g s !
+None o f t h e s t r i n g s
+s h o u l d be empty .
+3 . Do not s p l i t up r e l a t e d
+i n f o r m a t i o n i n t o s e p a r a t e
+t r i p l e s b e c a u s e t h i s
+c o u l d change t h e meaning .
+4 . Make s u r e a l l b r a c k e t s and
+q u o t a t i o n marks a r e
+matched .
+5 . B e f o r e adding a t r i p l e t o
+t h e knowledge graph ,
+check t h e c o n c a t e n a t e d
+t r i p l e makes s e n s e as a
+s e n t e n c e . I f not , d i s c a r d
+i t .
+" " " ,
+) ,
+( " human " ,
+" " " Here a r e some example i n p u t
+and o u t p u t p a i r s .
+## Example 1 .
+I n p u t :
+" The Walt Disney Company ,
+commonly known as Disney , i s
+an American m u l t i n a t i o n a l
+mass media and e n t e r t a i n m e n t
+c o n g l o m e r a t e t h a t i s
+h e a d q u a r t e r e d a t t h e Walt
+Disney S t u d i o s complex i n
+Burbank , C a l i f o r n i a . "
+Output :
+<python >
+[ [ " The Walt Disney Company " , "
+h e a d q u a r t e r e d a t " , " Walt
+Disney S t u d i o s complex i n
+Burbank , C a l i f o r n i a " ] ,
+[ " The Walt Disney Company " , "
+commonly known as " , " Disney
+" ] ,
+[ " The Walt Disney Company " , "
+i n s t a n c e o f " , " American
+m u l t i n a t i o n a l mass media and
+e n t e r t a i n m e n t c o n g l o m e r a t e " ] ]
+</ python >
+## Example 2 .
+I n p u t :
+" Amanda J a c k s o n was born i n
+S p r i n g f i e l d , Ohio , USA on
+June 1 , 1 9 8 5 . She was a
+b a s k e t b a l l p l a y e r f o r t h e U . S
+. women ’ s team . "
+Output :
+<python >
+[ [ " Amanda J a c k s o n " , " born i n " , "
+S p r i n g f i e l d , Ohio , USA " ] ,
+[ " Amanda J a c k s o n " , " born on " , "
+June 1 , 1 9 8 5 " ] ,
+[ " Amanda J a c k s o n " , " o c c u p a t i o n " ,
+" b a s k e t b a l l p l a y e r " ] ,
+[ " Amanda J a c k s o n " , " p l a y e d f o r " ,
+"U . S . women ’ s b a s k e t b a l l team
+" ] ] </ python >
+## Example 3 .
+I n p u t :
+" Music e x e c u t i v e D a r i u s Van Arman
+was born i n P e n n s y l v a n i a . He
+a t t e n d e d Gonzaga C o l l e g e
+High S c h o o l and i s a human
+b e i n g . "
+Output :
+<python >
+[ [ " D a r i u s Van Arman " , "
+o c c u p a t i o n " , " Music e x e c u t i v e
+" ] ,
+[ " D a r i u s Van Arman " , " born i n " , "
+P e n n s y l v a n i a " ] ,
+[ " D a r i u s Van Arman " , " a t t e n d e d " ,
+" Gonzaga C o l l e g e High S c h o o l
+" ] , [ " D a r i u s Van Arman " , "
+i n s t a n c e o f " , " human b e i n g " ] ]
+</ python >
+## Example 4 .
+I n p u t : " I t a l y had 3 . 6 x t i m e s more
+c a s e s o f c o r o n a v i r u s than
+China . "
+Output :
+<python >
+[ [ " I t a l y " , " had 3 . 6 x t i m e s more
+c a s e s o f c o r o n a v i r u s than " , "
+China " ] ]
+</ python >
+" " " ,
+) ,
+B. Hallucination correction (step 1)
+" " "
+You a r e an e x p e r t a t e x t r a c t i n g
+i n f o r m a t i o n i n s t r u c t u r e d f o r m a t s
+from t e x t .
+The f o l l o w i n g t r i p l e c o n t a i n s
+f a c t u a l l y i n c o r r e c t i n f o r m a t i o n .
+C o r r e c t i t based on t h e p r o v i d e d
+c o n t e x t ,
+I m p o r t a n t T i p s :
+1 . A t r i p l e i s d e f i n e d as [ "
+e n t i t y 1 " , " r e l a t i o n 1 −2 " , "
+e n t i t y 2 " ] .
+2 . A t r i p l e must only c o n t a i n
+t h r e e s t r i n g s ! None o f t h e
+s t r i n g s s h o u l d be empty .
+3 . The c o n c a t e n a t e d t r i p l e must
+make s e n s e as a s e n t e n c e .
+4 . Only r e t u r n t h e c o r r e c t e d
+t r i p l e , n o t h i n g e l s e .
+< t r i p l e > { t r i p l e } < / t r i p l e >
+< c o n t e x t > { c o n t e x t } < / c o n t e x t >
+Remember , i t i s i m p o r t a n t t h a t you
+only r e t u r n t h e c o r r e c t e d t r i p l e .
+" " "
+C. Hallucination correction (step
+2)
+" " "
+I n t h e f o l l o w i n g c o n t e x t , r e p l a c e t h e
+i n f o r m a t i o n o f t h e o l d t r i p l e
+with t h e i n f o r m a t i o n o f t h e new
+one .
+Do not make any o t h e r m o d i f i c a t i o n t o
+t h e c o n t e x t .
+Only r e t u r n t h e new c o n t e x t .
+< c o n t e x t > { summary } < / c o n t e x t >
+< o l d _ t r i p l e > { o l d _ t r i p l e } < / o l d _ t r i p l e >
+< n e w _ t r i p l e > { n e w _ t r i p l e } < / n e w _ t r i p l e >
+" " "
+D. Hallucination correction
+without a KG
+" " "
+The f o l l o w i n g summary c o n t a i n s
+f a c t u a l l y i n c o r r e c t i n f o r m a t i o n .
+C o r r e c t i t based on t h e c o n t e x t , but
+don ’ t change o t h e r p a r t s o f t h e
+summary .
+Only r e t u r n t h e c o r r e c t e d summary ,
+n o t h i n g e l s e .
+<summary > { summary } < / summary>
+< c o n t e x t > { c o n t e x t } < / c o n t e x t >
+Remember , do minimal changes t o t h e
+o r i g i n a l summary , don ’ t make i t
+l o n g e r and keep as much o f i t as
+you can e x a c t l y t h e same .
+" " "

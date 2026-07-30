@@ -1,6 +1,6 @@
 import time
 import logfire
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from app.config import settings
 
 BATCH_SIZE = 50
@@ -13,18 +13,18 @@ _model_type: str | None = None
 
 # ── Model initialisation ───────────────────────────────────────────────────────
 
-def _probe_gemini():
-    """Try one embed call to verify Gemini is reachable. Returns model or None."""
+def _probe_hf():
+    """Try one embed call to verify HuggingFace API is reachable. Returns model or None."""
     try:
-        model = GoogleGenerativeAIEmbeddings(
-            model="models/gemini-embedding-2-preview",
-            google_api_key=settings.GEMINI_API_KEY,
+        model = HuggingFaceInferenceAPIEmbeddings(
+            api_key=settings.HF_TOKEN,
+            model_name="BAAI/bge-large-en-v1.5" # Excellent open-source embedding model
         )
         model.embed_query("probe")
-        logfire.info("Gemini embeddings ready (gemini-embedding-2-preview, 3072-dim).")
+        logfire.info("HuggingFace embeddings ready (bge-large-en-v1.5, 1024-dim).")
         return model
     except Exception as e:
-        logfire.warning(f"Gemini probe failed: {e}. Will use sentence-transformers fallback.")
+        logfire.warning(f"HuggingFace probe failed: {e}. Will use sentence-transformers fallback.")
         return None
 
 
@@ -35,15 +35,16 @@ def _load_fallback():
 
 
 def _init():
-    """Initialise embedding model once per process. Called lazily on first use."""
-    global _active_model, _model_type
+    """Initialise embedding model once per process."""
+    global _active_model, _model_type, _GEMINI_DIM
     if _active_model is not None:
         return
 
-    gemini = _probe_gemini()
-    if gemini:
-        _active_model = gemini
-        _model_type = "gemini"
+    hf = _probe_hf()
+    if hf:
+        _active_model = hf
+        _model_type = "huggingface"
+        _GEMINI_DIM = 1024 # BAAI/bge-large-en-v1.5 dimension
     else:
         _active_model = _load_fallback()
         _model_type = "fallback"
@@ -54,31 +55,30 @@ def _init():
 def get_embedding_dim() -> int:
     """Return the vector dimension for the active model. Call after _init()."""
     _init()
-    return _GEMINI_DIM if _model_type == "gemini" else _FALLBACK_DIM
+    return _GEMINI_DIM if _model_type == "huggingface" else _FALLBACK_DIM
 
 
 # ── Batch embedding with retry ─────────────────────────────────────────────────
 
 def _embed_batch(batch: list[str]) -> list[list[float]]:
-    if _model_type == "gemini":
-        # Exponential backoff: 1 s → 2 s → 4 s → 8 s (4 attempts total)
-        for attempt in range(4):
+    if _model_type == "huggingface":
+        for attempt in range(8):
             try:
                 return _active_model.embed_documents(batch)
             except Exception as e:
                 err = str(e).lower()
-                is_rate_limit = any(x in err for x in ("429", "rate", "quota", "resource_exhausted"))
-                if is_rate_limit and attempt < 3:
-                    wait = 2 ** attempt
+                is_rate_limit = any(x in err for x in ("429", "rate", "quota", "too many requests"))
+                if is_rate_limit and attempt < 7:
+                    wait = 15 * (attempt + 1)
                     logfire.warning(
-                        f"Gemini rate limit hit — retrying in {wait}s "
-                        f"(attempt {attempt + 1}/4)."
+                        f"HF rate limit hit — retrying in {wait}s "
+                        f"(attempt {attempt + 1}/8)."
                     )
                     time.sleep(wait)
                 else:
-                    logfire.error(f"Gemini embedding failed: {e}")
+                    logfire.error(f"HF embedding failed: {e}")
                     raise
-        raise RuntimeError("Gemini rate limit persisted after 4 attempts.")
+        raise RuntimeError("HF rate limit persisted after 8 attempts.")
     else:
         return _active_model.encode(batch, show_progress_bar=False).tolist()
 
@@ -87,7 +87,7 @@ def _embed_batch(batch: list[str]) -> list[list[float]]:
 
 def embed_query(query: str) -> list[float]:
     _init()
-    if _model_type == "gemini":
+    if _model_type == "huggingface":
         return _active_model.embed_query(query)
     return _active_model.encode([query])[0].tolist()
 
@@ -99,4 +99,9 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
         batch = texts[i : i + BATCH_SIZE]
         with logfire.span("Embed batch", model=_model_type, start=i, size=len(batch)):
             all_embeddings.extend(_embed_batch(batch))
+            
+        # Proactively sleep for 2 seconds after each batch
+        if _model_type == "huggingface":
+            time.sleep(2)
+            
     return all_embeddings
