@@ -1,0 +1,71 @@
+GANDHI INSTITUTE OF ENGINEERING AND 
+TECHOLOGY UNIVERSITY, ODISHA, GUNUPUR 
+Department of Computer Science and Engineering 
+Minor Project-I Review Report-1 
+PROJECT  
+TITLE 
+ Group 
+Number 
+   2 
+Team Leader Name  and 
+Roll No 
+Team Members Name 
+and Roll No 
+Minor Project-I 
+Status   
+Tentative Date of 
+Submission of Project   
+1. Rudra Narayan 
+Sahu(24CSEAIML139) 
+2.Deeptinirmalya 
+Mohanty(24CSEAIML115) 
+3. Amar Kumar 
+Chauhan(24CSEAIML082) 
+2nd July 2026 to 
+30th Aug 2026 
+31st October – 4th 
+November 2026 
+PROJECT SUMMARY: - 
+I present to you the Multi-Agent RAG system which solves the issue of single LLM's 
+inability to handle complex research tasks in the presence of knowledge capping, lack of 
+context, and hallucination. The system is built around the Master agent which analyses the 
+user's question and directs the query to relevant sub-agents which perform database, web 
+search, tool calling, and query resolution. The agent follows the RAG-first approach by first 
+searching the Quadrant vector database for relevant documents for grounding. If the 
+documents aren't found or are lacking in the context, the system uses an external search agent 
+to perform a web search, and a memory agent maintains the memory of the conversation for 
+the next turn.  
+ 
+PROJECT OVERVIEW: - 
+Built with LangChain, LangGraph, FastAPI, Streamlit, HTML, CSS, and JavaScript. The app 
+uses separate agent parts and ties them together in a clear workflow. It is not based on one 
+model trying to guess when it cannot support a request. Instead, the system splits the job. One 
+agent checks what is needed. Another agent pulls relevant data. A third agent puts the pieces 
+together. This setup helps the assistant stay accurate and grounded in real sources. The 
+assistant also connects offline style storage for domain knowledge with live web access. That 
+mix makes the answers more current. It supports more reliable research when users ask for 
+harder and broader information 
+CATEGORY* PRESENT 
+STATUS 
+OF PROJECT 
+PERCENTAGE 
+OF WORK 
+COMPLETED 
+PENDING WORK 
+Agentic AI Query 
+embedding 
+and retrieval 
+pipeline 
+completed 
+30% Input pipeline, backend, UI 
+*(Research Based/App Development (system/mobile/cloud/iot, etc.)/Web 
+Application/Data Science Application) 
+Comments of the Supervisor: - 
+GANDHI INSTITUTE OF ENGINEERING AND 
+TECHOLOGY UNIVERSITY, ODISHA, GUNUPUR 
+Department of Computer Science and Engineering 
+Minor Project-I Review Report-1 
+ 
+ 
+ 
+Date:                           Supervisor                            Class Teacher                      Project Coordinator 

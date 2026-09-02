@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agentic RAG Knowledge System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Marked for markdown parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header / Navbar -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon"></div>
+        <div>
+          <h1 class="brand-title">Agentic RAG System</h1>
+          <p class="brand-subtitle">Qdrant Vector Search &bull; Groq LLM &bull; Multi-Document Ingestion</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <div class="status-pill" id="statusPill">
+          <span class="status-dot"></span>
+          <span id="statusText">Connecting...</span>
+        </div>
+        <div class="stat-pill" title="Total vector chunks in Qdrant">
+          <span class="stat-icon"></span>
+          <span id="vectorCount">0</span> vectors
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Navigation Tabs -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" id="tabChatBtn" onclick="switchTab('chat')">
+        <span class="tab-icon"></span> RAG Chat
+      </button>
+      <button class="tab-btn" id="tabSearchBtn" onclick="switchTab('search')">
+        <span class="tab-icon"></span> Similarity Search
+      </button>
+      <button class="tab-btn" id="tabIngestBtn" onclick="switchTab('ingest')">
+        <span class="tab-icon"></span> Document Ingestion
+      </button>
+    </nav>
+
+    <!-- Content Sections -->
+    <main class="content-area">
+      <!-- 1. CHAT TAB -->
+      <section id="chatSection" class="tab-content active">
+        <div class="chat-wrapper">
+          <div class="chat-messages" id="chatMessages">
+            <div class="message system-message">
+              <div class="message-bubble">
+                <strong>Welcome to Agentic RAG!</strong>
+                <p>Ask any question about your ingested documents. The assistant will retrieve relevant context from Qdrant vector database and synthesize an accurate answer with citations.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-input-container">
+            <form id="chatForm" onsubmit="handleChatSubmit(event)">
+              <div class="input-row">
+                <input 
+                  type="text" 
+                  id="chatInput" 
+                  placeholder="Ask a question about your documents (e.g. What is knowledge graph entity alignment?)..." 
+                  autocomplete="off"
+                  required
+                />
+                <button type="submit" id="chatSendBtn" class="primary-btn">
+                  <span>Send</span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+              </div>
+            </form>
+            <div class="chat-controls">
+              <div class="control-item">
+                <label for="chatTopK">Top-K Context Chunks:</label>
+                <select id="chatTopK">
+                  <option value="3">3 Chunks</option>
+                  <option value="5" selected>5 Chunks</option>
+                  <option value="8">8 Chunks</option>
+                </select>
+              </div>
+              <button type="button" class="text-btn" onclick="clearChat()">Clear History</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. SIMILARITY SEARCH TAB -->
+      <section id="searchSection" class="tab-content">
+        <div class="search-panel">
+          <div class="card search-card">
+            <h2>Semantic Similarity Search Inspector</h2>
+            <p class="section-desc">Pass a query to generate vector embeddings and retrieve the most similar document chunks directly from Qdrant with cosine similarity ranking.</p>
+            
+            <form id="searchForm" onsubmit="handleSearchSubmit(event)">
+              <div class="search-input-group">
+                <input 
+                  type="text" 
+                  id="searchInput" 
+                  placeholder="Enter semantic search query..." 
+                  required
+                />
+                <select id="searchTopK" title="Top-K results">
+                  <option value="3">Top 3</option>
+                  <option value="5" selected>Top 5</option>
+                  <option value="10">Top 10</option>
+                </select>
+                <button type="submit" class="primary-btn" id="searchSubmitBtn">
+                  <span>Search Vector DB</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Search Results Container -->
+          <div id="searchResultsArea" class="search-results-area">
+            <div class="empty-state" id="searchEmptyState">
+              <div class="empty-icon"></div>
+              <p>Enter a query above to inspect similarity search results from Qdrant.</p>
+            </div>
+            <div id="searchResultsList" class="results-list" style="display: none;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. INGESTION TAB -->
+      <section id="ingestSection" class="tab-content">
+        <div class="ingest-grid">
+          <!-- Direct File Upload -->
+          <div class="card">
+            <h2>Upload & Ingest Document</h2>
+            <p class="section-desc">Upload PDF, DOCX, TXT, or HTML files to immediately parse, chunk, embed, and store in Qdrant.</p>
+            
+            <div class="upload-dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+              <input type="file" id="fileInput" style="display: none;" accept=".pdf,.docx,.pptx,.txt,.html,.md" onchange="handleFileSelected(event)"/>
+              <div class="dropzone-icon"></div>
+              <p class="dropzone-title" id="dropzoneText">Click or Drag & Drop file here</p>
+              <p class="dropzone-sub">Supported formats: PDF, DOCX, PPTX, TXT, HTML, MD</p>
+            </div>
+
+            <div id="uploadFileInfo" class="file-info-badge" style="display: none;">
+              <span id="uploadFileName">filename.pdf</span>
+              <button class="primary-btn sm" id="uploadBtn" onclick="submitFileUpload()">Ingest Now</button>
+            </div>
+
+            <div id="uploadStatus" class="status-msg"></div>
+          </div>
+
+          <!-- Batch Directory Ingestion -->
+          <div class="card">
+            <h2>Batch Ingest DATA Directory</h2>
+            <p class="section-desc">Automatically scan the local <code>DATA/</code> folder and ingest all documents into Qdrant collection.</p>
+            
+            <div class="ingest-action-box">
+              <div class="info-row">
+                <span class="info-label">Target Collection:</span>
+                <span class="info-value" id="collectionNameBadge">enterprise_rag</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Embedding Model:</span>
+                <span class="info-value" id="embeddingModelBadge">all-MiniLM-L6-v2 (384-dim)</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">LLM Reasoner:</span>
+                <span class="info-value" id="llmModelBadge">openai/gpt-oss-120b</span>
+              </div>
+
+              <button class="primary-btn w-full" id="batchIngestBtn" onclick="triggerBatchIngest()">
+                <span>⚡ Ingest All Documents in DATA/</span>
+              </button>
+            </div>
+
+            <div id="batchIngestResult" class="batch-results-box" style="display: none;"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <span>Agentic RAG Engine &bull; Qdrant Vector Search &bull; Groq Fast Inference</span>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

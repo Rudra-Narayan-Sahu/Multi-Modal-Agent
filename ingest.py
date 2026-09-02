@@ -1,27 +1,39 @@
 import os
-import glob
-from app.ingestion.processor import process_file
+import sys
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "DATA")
+# Configure UTF-8 for console output on Windows
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding='utf-8')
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding='utf-8')
+
+from app.ingestion.processor import process_all_files
 
 def main():
-    print(f"Looking for PDFs in {DATA_DIR}...")
-    pdf_files = glob.glob(os.path.join(DATA_DIR, "*.pdf"))
+    print("=" * 60)
+    print(">>> STARTING AGENTIC RAG DOCUMENT INGESTION")
+    print("=" * 60)
     
-    if not pdf_files:
-        print("No PDF files found in the DATA directory.")
-        return
-
-    for file_path in pdf_files:
-        file_name = os.path.basename(file_path)
-        print(f"Ingesting: {file_name}")
-        process_file(
-            file_path=file_path,
-            file_name=file_name,
-            source_type="pdf",
-            source_name="Local Data Directory"
-        )
-    print("Ingestion complete!")
+    result = process_all_files("DATA")
+    
+    print("\n" + "=" * 60)
+    print("INGESTION SUMMARY:")
+    print(f"Total Files Found:   {result.get('total_files', 0)}")
+    print(f"Total Chunks Stored: {result.get('total_chunks', 0)}")
+    
+    if result.get("processed_files"):
+        print("\nProcessed Files:")
+        for pf in result["processed_files"]:
+            print(f"  [+] {pf['file_name']}: {pf['chunks']} chunks")
+            
+    if result.get("errors"):
+        print("\nErrors:")
+        for err in result["errors"]:
+            print(f"  [-] {err['file_name']}: {err['error']}")
+            
+    print("=" * 60)
 
 if __name__ == "__main__":
     main()
+
+
