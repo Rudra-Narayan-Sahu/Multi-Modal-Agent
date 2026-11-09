@@ -56,7 +56,7 @@ def response_node(state: AgentState) -> Dict[str, Any]:
         citation_sections: List[str] = []
 
         if doc_citations:
-            doc_lines = ["\n### 📄 Document Sources"]
+            doc_lines = ["\n### Document Sources"]
             seen_docs = set()
             for dc in doc_citations:
                 key = (dc.get("file_name"), dc.get("chunk_index"))
@@ -68,7 +68,7 @@ def response_node(state: AgentState) -> Dict[str, Any]:
             citation_sections.append("\n".join(doc_lines))
 
         if web_citations:
-            web_lines = ["\n### 🌐 External Web Sources"]
+            web_lines = ["\n### External Web Sources"]
             seen_urls = set()
             for wc in web_citations:
                 url = wc.get("url", "")

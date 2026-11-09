@@ -20,18 +20,20 @@
         extend: {
           colors: {
             chatgpt: {
-              sidebar: '#202123',
-              main: '#343541',
-              userBubble: '#2f2f2f',
-              userBubbleHover: '#383838',
-              card: '#3E3F4B',
-              input: '#40414F',
-              border: '#4D4D4F',
-              hover: '#2A2B32',
-              text: '#ECECF1',
-              subtext: '#C5C5D2',
-              grayIcon: '#8E8EA0',
-              accent: '#10a37f'
+              sidebar: '#F9F9F9',
+              sidebarBorder: '#E5E7EB',
+              main: '#FFFFFF',
+              userBubble: '#F4F4F4',
+              userBubbleHover: '#EBEBEB',
+              card: '#F7F7F8',
+              cardHover: '#ECECF1',
+              input: '#FFFFFF',
+              border: '#D1D5DB',
+              hover: '#EFEFEF',
+              text: '#0D0D0D',
+              subtext: '#4B5563',
+              grayIcon: '#6B7280',
+              accent: '#10A37F'
             }
           }
         }
@@ -45,43 +47,57 @@
       margin: 0;
       padding: 0;
       overflow: hidden;
-      background-color: #343541;
-      color: #ECECF1;
+      background-color: #FFFFFF;
+      color: #0D0D0D;
     }
     .custom-scrollbar::-webkit-scrollbar { width: 5px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #565869; border-radius: 3px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #acacbe; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
     
+    /* Code blocks in clean dark theme inside light mode - exactly like ChatGPT */
     .prose pre {
-      background: #202123;
+      background: #1E1E1E;
+      color: #E2E8F0;
       border-radius: 8px;
       padding: 14px 16px;
       overflow-x: auto;
-      margin: 12px 0;
-      border: 1px solid rgba(255,255,255,0.08);
+      margin: 14px 0;
+      border: 1px solid #334155;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 0.85rem;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+    .prose pre code {
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+      color: inherit;
+      font-size: inherit;
     }
     .prose code {
-      background: rgba(255, 255, 255, 0.1);
+      background: #F1F5F9;
+      color: #0F172A;
       padding: 2px 6px;
       border-radius: 4px;
       font-size: 0.88em;
+      border: 1px solid #E2E8F0;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
-    .prose table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9em; }
-    .prose th, .prose td { border: 1px solid #565869; padding: 7px 12px; text-align: left; }
-    .prose th { background: rgba(255, 255, 255, 0.06); font-weight: 600; }
+    .prose table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.9em; }
+    .prose th, .prose td { border: 1px solid #E5E7EB; padding: 8px 12px; text-align: left; }
+    .prose th { background: #F8FAFC; font-weight: 600; color: #0F172A; }
+    .prose td { color: #334155; }
     .prose ul { list-style-type: disc; margin-left: 24px; margin-top: 6px; margin-bottom: 6px; }
     .prose ol { list-style-type: decimal; margin-left: 24px; margin-top: 6px; margin-bottom: 6px; }
-    .prose p { margin-bottom: 12px; line-height: 1.65; }
-    .prose a { color: #10a37f; text-decoration: underline; }
+    .prose p { margin-bottom: 12px; line-height: 1.65; color: #1F2937; }
+    .prose h1, .prose h2, .prose h3, .prose h4 { color: #0F172A; font-weight: 600; margin-top: 16px; margin-bottom: 8px; }
+    .prose a { color: #10A37F; text-decoration: underline; font-weight: 500; }
     .cursor-blink {
       display: inline-block;
       width: 2px;
       height: 1em;
-      background-color: #d1d5db;
+      background-color: #374151;
       animation: blink 1s infinite;
       vertical-align: middle;
       margin-left: 2px;
@@ -98,7 +114,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // SVG Icons
+    // Professional SVG Icons without any emojis
     const PlusIcon = () => (
       <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 shrink-0" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
         <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -107,13 +123,13 @@
     );
 
     const MessageIcon = () => (
-      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 shrink-0 text-chatgpt-grayIcon" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 shrink-0 text-gray-500" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
       </svg>
     );
 
     const TrashIcon = () => (
-      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-3.5 w-3.5 text-chatgpt-grayIcon hover:text-white transition" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-3.5 w-3.5 text-gray-400 hover:text-red-600 transition" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
         <polyline points="3 6 5 6 21 6"></polyline>
         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
       </svg>
@@ -132,6 +148,16 @@
       </svg>
     );
 
+    const FileOutlineIcon = () => (
+      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 shrink-0 text-gray-600" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+    );
+
     const UserOutlineIcon = () => (
       <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 shrink-0" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -140,14 +166,14 @@
     );
 
     const SendIcon = ({ active }) => (
-      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class={`h-4 w-4 transition ${active ? 'text-white' : 'text-chatgpt-grayIcon/40'}`} height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class={`h-4 w-4 transition ${active ? 'text-gray-900' : 'text-gray-300'}`} height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
         <line x1="22" y1="2" x2="11" y2="13"></line>
         <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
       </svg>
     );
 
     const SunIcon = () => (
-      <svg stroke="currentColor" fill="none" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-6 w-6 mx-auto mb-2 text-chatgpt-text" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+      <svg stroke="currentColor" fill="none" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-6 w-6 mx-auto mb-2 text-gray-700" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
         <circle cx="12" cy="12" r="5"></circle>
         <line x1="12" y1="1" x2="12" y2="3"></line>
         <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -161,13 +187,13 @@
     );
 
     const BoltIcon = () => (
-      <svg stroke="currentColor" fill="none" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-6 w-6 mx-auto mb-2 text-chatgpt-text" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+      <svg stroke="currentColor" fill="none" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-6 w-6 mx-auto mb-2 text-gray-700" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
       </svg>
     );
 
     const WarningIcon = () => (
-      <svg stroke="currentColor" fill="none" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-6 w-6 mx-auto mb-2 text-chatgpt-text" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+      <svg stroke="currentColor" fill="none" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-6 w-6 mx-auto mb-2 text-gray-700" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
         <line x1="12" y1="9" x2="12" y2="13"></line>
         <line x1="12" y1="17" x2="12.01" y2="17"></line>
@@ -182,18 +208,18 @@
     );
 
     const UserAvatar = ({ email }) => (
-      <div class="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center font-bold text-xs shrink-0 select-none bg-gradient-to-tr from-amber-700 to-amber-500 text-white shadow-inner">
+      <div class="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center font-semibold text-xs shrink-0 select-none bg-indigo-600 text-white shadow-sm">
         {email ? email.charAt(0).toUpperCase() : 'R'}
       </div>
     );
 
     const AssistantAvatar = () => (
-      <div class="w-7 h-7 rounded-sm bg-[#10a37f] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm select-none">
+      <div class="w-7 h-7 rounded-sm bg-[#10A37F] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm select-none">
         <OpenAIIcon />
       </div>
     );
 
-    // Initial history
+    // Initial conversation history
     const DEFAULT_HISTORY = [
       { id: "mock_today_1", title: "New chat", section: "Today" },
       { id: "mock_p30_1", title: "Tech & UX Trends", section: "Previous 30 Days" },
@@ -368,7 +394,7 @@
             // Add notification to current chat stream
             const asstMsg = {
               role: "assistant",
-              content: `📄 **Document Ingested into Knowledge Base**\n\n**File:** \`${file.name}\`  \n**Size:** ${(file.size / 1024).toFixed(1)} KB  \n**Chunks Created:** ${data.chunks_stored} vector points stored in Qdrant.\n\nYou can now ask me any question about the contents of this document!`,
+              content: `**Document Ingested into Knowledge Base**\n\n- File: \`${file.name}\`\n- Size: ${(file.size / 1024).toFixed(1)} KB\n- Chunks Created: ${data.chunks_stored} vector embeddings indexed in Qdrant.\n\nYou can now ask questions about the contents of this document.`,
               created_at: new Date().toISOString(),
               metadata: {
                 category: "DOCUMENT_INGESTION",
@@ -498,42 +524,42 @@
       const previousChats = conversations.filter(c => c.section === "Previous 30 Days" || (!c.section && conversations.indexOf(c) >= 1));
 
       return (
-        <div class="flex h-full w-full bg-chatgpt-main overflow-hidden text-sm">
+        <div class="flex h-full w-full bg-white overflow-hidden text-sm">
           {/* ======================================================== */}
-          {/* LEFT SIDEBAR (260px, exact #202123 background)          */}
+          {/* LEFT SIDEBAR (Light gray #F9F9F9 with #E5E7EB border)    */}
           {/* ======================================================== */}
-          <div class="w-[260px] bg-chatgpt-sidebar h-full flex flex-col justify-between shrink-0 select-none">
+          <div class="w-[260px] bg-chatgpt-sidebar h-full flex flex-col justify-between shrink-0 select-none border-r border-chatgpt-sidebarBorder">
             {/* Top Section */}
-            <div class="p-2 flex flex-col h-[calc(100%-116px)]">
+            <div class="p-3 flex flex-col h-[calc(100%-116px)]">
               {/* + New chat button */}
               <button
                 onClick={handleNewChat}
-                class="flex items-center gap-3 w-full border border-white/20 rounded-md px-3 py-2.5 text-white hover:bg-chatgpt-hover transition text-sm mb-3"
+                class="flex items-center gap-3 w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-gray-800 hover:bg-gray-100 transition text-sm mb-3 shadow-sm font-medium"
               >
                 <PlusIcon />
-                <span class="text-sm font-normal">New chat</span>
+                <span>New chat</span>
               </button>
 
               {/* Chat History List */}
               <div class="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
                 {/* Today Section */}
                 <div>
-                  <div class="text-[11px] font-medium text-chatgpt-grayIcon px-3 py-1.5 tracking-wide">Today</div>
+                  <div class="text-[11px] font-semibold text-gray-500 px-3 py-1.5 tracking-wider uppercase">Today</div>
                   <div class="space-y-0.5">
                     {todayChats.length > 0 ? (
                       todayChats.map(conv => (
                         <div
                           key={conv.id}
                           onClick={() => selectConversation(conv)}
-                          class={`group flex items-center justify-between px-3 py-2.5 rounded-md cursor-pointer transition ${activeConvId === conv.id ? 'bg-[#343541] text-white' : 'text-chatgpt-subtext hover:bg-chatgpt-hover'}`}
+                          class={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition ${activeConvId === conv.id ? 'bg-gray-200/80 text-gray-900 font-medium' : 'text-gray-700 hover:bg-gray-100'}`}
                         >
-                          <div class="flex items-center gap-3 truncate">
+                          <div class="flex items-center gap-2.5 truncate">
                             <MessageIcon />
-                            <span class="truncate text-xs font-normal">{conv.title}</span>
+                            <span class="truncate text-xs">{conv.title}</span>
                           </div>
                           <button
                             onClick={(e) => handleDeleteChat(e, conv.id)}
-                            class="opacity-0 group-hover:opacity-100 hover:text-white transition p-0.5"
+                            class="opacity-0 group-hover:opacity-100 hover:text-red-600 transition p-0.5"
                           >
                             <TrashIcon />
                           </button>
@@ -542,7 +568,7 @@
                     ) : (
                       <div
                         onClick={handleNewChat}
-                        class="flex items-center gap-3 px-3 py-2.5 rounded-md text-chatgpt-subtext hover:bg-chatgpt-hover cursor-pointer"
+                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 cursor-pointer"
                       >
                         <MessageIcon />
                         <span class="text-xs">New chat</span>
@@ -553,21 +579,21 @@
 
                 {/* Previous 30 Days Section */}
                 <div>
-                  <div class="text-[11px] font-medium text-chatgpt-grayIcon px-3 py-1.5 tracking-wide">Previous 30 Days</div>
+                  <div class="text-[11px] font-semibold text-gray-500 px-3 py-1.5 tracking-wider uppercase">Previous 30 Days</div>
                   <div class="space-y-0.5">
                     {previousChats.map(conv => (
                       <div
                         key={conv.id}
                         onClick={() => selectConversation(conv)}
-                        class={`group flex items-center justify-between px-3 py-2.5 rounded-md cursor-pointer transition ${activeConvId === conv.id ? 'bg-[#343541] text-white' : 'text-chatgpt-subtext hover:bg-chatgpt-hover'}`}
+                        class={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition ${activeConvId === conv.id ? 'bg-gray-200/80 text-gray-900 font-medium' : 'text-gray-700 hover:bg-gray-100'}`}
                       >
-                        <div class="flex items-center gap-3 truncate">
+                        <div class="flex items-center gap-2.5 truncate">
                           <MessageIcon />
-                          <span class="truncate text-xs font-normal">{conv.title}</span>
+                          <span class="truncate text-xs">{conv.title}</span>
                         </div>
                         <button
                           onClick={(e) => handleDeleteChat(e, conv.id)}
-                          class="opacity-0 group-hover:opacity-100 hover:text-white transition p-0.5"
+                          class="opacity-0 group-hover:opacity-100 hover:text-red-600 transition p-0.5"
                         >
                           <TrashIcon />
                         </button>
@@ -579,17 +605,17 @@
             </div>
 
             {/* Bottom Controls / User Profile Bar */}
-            <div class="border-t border-white/20 p-2 space-y-1">
+            <div class="border-t border-gray-200 p-2.5 space-y-1 bg-[#F9F9F9]">
               {/* Document Ingestion & Plus Button */}
               <div
                 onClick={() => { setActiveModalTab("documents"); setShowModal(true); }}
-                class="flex items-center justify-between px-3 py-2 text-xs text-chatgpt-subtext hover:bg-chatgpt-hover rounded-md transition cursor-pointer"
+                class="flex items-center justify-between px-3 py-2 text-xs text-gray-700 hover:bg-gray-200/60 rounded-lg transition cursor-pointer"
               >
-                <div class="flex items-center gap-3">
-                  <span>📁</span>
-                  <span class="text-xs text-chatgpt-text font-normal">Files & Ingestion</span>
+                <div class="flex items-center gap-2.5">
+                  <FileOutlineIcon />
+                  <span class="font-medium text-xs">Files & Knowledge</span>
                 </div>
-                <span class="bg-emerald-500/20 text-emerald-300 font-mono text-[10px] px-1.5 py-0.5 rounded">
+                <span class="bg-gray-200 text-gray-700 font-mono text-[10px] px-1.5 py-0.5 rounded font-semibold">
                   {uploadedDocs.length}
                 </span>
               </div>
@@ -597,11 +623,11 @@
               {/* Upgrade to Plus with gold NEW badge */}
               <div
                 onClick={() => { setActiveModalTab("memory"); setShowModal(true); }}
-                class="flex items-center justify-between px-3 py-2 text-xs text-chatgpt-subtext hover:bg-chatgpt-hover rounded-md transition cursor-pointer"
+                class="flex items-center justify-between px-3 py-2 text-xs text-gray-700 hover:bg-gray-200/60 rounded-lg transition cursor-pointer"
               >
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2.5">
                   <UserOutlineIcon />
-                  <span class="text-sm font-normal text-white">Upgrade to Plus</span>
+                  <span class="font-medium text-xs">Upgrade to Plus</span>
                 </div>
                 <span class="bg-[#FAE69E] text-black font-bold text-[10px] px-1.5 py-0.5 rounded tracking-wider shadow-sm">
                   NEW
@@ -611,28 +637,28 @@
               {/* User Profile Row: Avatar + Email + 3-dots */}
               <div
                 onClick={() => { setActiveModalTab("user"); setShowModal(true); }}
-                class="flex items-center justify-between px-3 py-2 text-xs text-chatgpt-subtext hover:bg-chatgpt-hover rounded-md transition cursor-pointer"
+                class="flex items-center justify-between px-3 py-2 text-xs text-gray-700 hover:bg-gray-200/60 rounded-lg transition cursor-pointer"
               >
-                <div class="flex items-center gap-3 truncate">
+                <div class="flex items-center gap-2.5 truncate">
                   <UserAvatar email={userEmail} />
-                  <span class="truncate font-medium text-white text-xs">{userEmail}</span>
+                  <span class="truncate font-medium text-gray-900 text-xs">{userEmail}</span>
                 </div>
-                <span class="text-chatgpt-grayIcon hover:text-white text-sm font-bold tracking-widest pl-1">•••</span>
+                <span class="text-gray-400 hover:text-gray-800 text-sm font-bold tracking-widest pl-1">•••</span>
               </div>
             </div>
           </div>
 
           {/* ======================================================== */}
-          {/* MAIN CHAT AREA (exact #343541 background)                */}
+          {/* MAIN CHAT AREA (Pure Clean White #FFFFFF background)      */}
           {/* ======================================================== */}
-          <div class="flex-1 flex flex-col h-full relative overflow-hidden bg-chatgpt-main">
+          <div class="flex-1 flex flex-col h-full relative overflow-hidden bg-white">
             {/* Conversation Flow or Empty Home Screen */}
             <div class="flex-1 overflow-y-auto custom-scrollbar flex flex-col justify-between">
               {messages.length === 0 ? (
-                /* EMPTY STATE: Matches the user-provided screenshot pixel-for-pixel */
+                /* EMPTY STATE: Crisp White Background with ChatGPT Cards */
                 <div class="max-w-3xl w-full mx-auto px-4 pt-16 pb-28 flex flex-col items-center justify-center my-auto">
                   {/* ChatGPT Center Title */}
-                  <h1 class="text-[38px] font-semibold text-white mb-10 tracking-tight select-none">
+                  <h1 class="text-[38px] font-semibold text-gray-900 mb-10 tracking-tight select-none">
                     ChatGPT
                   </h1>
 
@@ -642,23 +668,23 @@
                     <div class="flex flex-col gap-3.5">
                       <div class="flex flex-col items-center justify-center mb-1">
                         <SunIcon />
-                        <h2 class="text-lg font-normal text-white">Examples</h2>
+                        <h2 class="text-lg font-medium text-gray-900">Examples</h2>
                       </div>
                       <button
                         onClick={() => handleSend("Explain quantum computing in simple terms")}
-                        class="bg-chatgpt-card hover:bg-chatgpt-sidebar p-3 rounded-md text-xs text-gray-200 transition shadow-sm select-none min-h-[64px] flex items-center justify-center border border-transparent hover:border-white/5 active:scale-[0.98]"
+                        class="bg-chatgpt-card hover:bg-chatgpt-cardHover p-3 rounded-lg text-xs text-gray-700 transition shadow-sm select-none min-h-[64px] flex items-center justify-center border border-gray-200/70 hover:border-gray-300 active:scale-[0.98]"
                       >
                         "Explain quantum computing in simple terms" →
                       </button>
                       <button
                         onClick={() => handleSend("Got any creative ideas for a 10 year old's birthday?")}
-                        class="bg-chatgpt-card hover:bg-chatgpt-sidebar p-3 rounded-md text-xs text-gray-200 transition shadow-sm select-none min-h-[64px] flex items-center justify-center border border-transparent hover:border-white/5 active:scale-[0.98]"
+                        class="bg-chatgpt-card hover:bg-chatgpt-cardHover p-3 rounded-lg text-xs text-gray-700 transition shadow-sm select-none min-h-[64px] flex items-center justify-center border border-gray-200/70 hover:border-gray-300 active:scale-[0.98]"
                       >
                         "Got any creative ideas for a 10 year old's birthday?" →
                       </button>
                       <button
                         onClick={() => handleSend("How do I make an HTTP request in Javascript?")}
-                        class="bg-chatgpt-card hover:bg-chatgpt-sidebar p-3 rounded-md text-xs text-gray-200 transition shadow-sm select-none min-h-[64px] flex items-center justify-center border border-transparent hover:border-white/5 active:scale-[0.98]"
+                        class="bg-chatgpt-card hover:bg-chatgpt-cardHover p-3 rounded-lg text-xs text-gray-700 transition shadow-sm select-none min-h-[64px] flex items-center justify-center border border-gray-200/70 hover:border-gray-300 active:scale-[0.98]"
                       >
                         "How do I make an HTTP request in Javascript?" →
                       </button>
@@ -668,15 +694,15 @@
                     <div class="flex flex-col gap-3.5">
                       <div class="flex flex-col items-center justify-center mb-1">
                         <BoltIcon />
-                        <h2 class="text-lg font-normal text-white">Capabilities</h2>
+                        <h2 class="text-lg font-medium text-gray-900">Capabilities</h2>
                       </div>
-                      <div class="bg-chatgpt-card p-3 rounded-md text-xs text-gray-200 shadow-sm select-none min-h-[64px] flex items-center justify-center">
+                      <div class="bg-chatgpt-card p-3 rounded-lg text-xs text-gray-700 shadow-sm select-none min-h-[64px] flex items-center justify-center border border-gray-200/70">
                         Remembers what user said earlier in the conversation
                       </div>
-                      <div class="bg-chatgpt-card p-3 rounded-md text-xs text-gray-200 shadow-sm select-none min-h-[64px] flex items-center justify-center">
+                      <div class="bg-chatgpt-card p-3 rounded-lg text-xs text-gray-700 shadow-sm select-none min-h-[64px] flex items-center justify-center border border-gray-200/70">
                         Allows user to provide follow-up corrections
                       </div>
-                      <div class="bg-chatgpt-card p-3 rounded-md text-xs text-gray-200 shadow-sm select-none min-h-[64px] flex items-center justify-center">
+                      <div class="bg-chatgpt-card p-3 rounded-lg text-xs text-gray-700 shadow-sm select-none min-h-[64px] flex items-center justify-center border border-gray-200/70">
                         Trained to decline inappropriate requests
                       </div>
                     </div>
@@ -685,15 +711,15 @@
                     <div class="flex flex-col gap-3.5">
                       <div class="flex flex-col items-center justify-center mb-1">
                         <WarningIcon />
-                        <h2 class="text-lg font-normal text-white">Limitations</h2>
+                        <h2 class="text-lg font-medium text-gray-900">Limitations</h2>
                       </div>
-                      <div class="bg-chatgpt-card p-3 rounded-md text-xs text-gray-200 shadow-sm select-none min-h-[64px] flex items-center justify-center">
+                      <div class="bg-chatgpt-card p-3 rounded-lg text-xs text-gray-700 shadow-sm select-none min-h-[64px] flex items-center justify-center border border-gray-200/70">
                         May occasionally generate incorrect information
                       </div>
-                      <div class="bg-chatgpt-card p-3 rounded-md text-xs text-gray-200 shadow-sm select-none min-h-[64px] flex items-center justify-center">
+                      <div class="bg-chatgpt-card p-3 rounded-lg text-xs text-gray-700 shadow-sm select-none min-h-[64px] flex items-center justify-center border border-gray-200/70">
                         May occasionally produce harmful instructions or biased content
                       </div>
-                      <div class="bg-chatgpt-card p-3 rounded-md text-xs text-gray-200 shadow-sm select-none min-h-[64px] flex items-center justify-center">
+                      <div class="bg-chatgpt-card p-3 rounded-lg text-xs text-gray-700 shadow-sm select-none min-h-[64px] flex items-center justify-center border border-gray-200/70">
                         Limited knowledge of world and events after 2021
                       </div>
                     </div>
@@ -711,7 +737,7 @@
                       // 1. USER QUERY: ALIGNED TO THE RIGHT
                       return (
                         <div key={idx} class="flex justify-end w-full animate-in fade-in duration-150">
-                          <div class="max-w-[85%] md:max-w-[72%] bg-chatgpt-userBubble hover:bg-chatgpt-userBubbleHover transition border border-white/5 text-white px-5 py-3.5 rounded-3xl shadow-sm text-[15px] leading-relaxed break-words whitespace-pre-wrap select-text">
+                          <div class="max-w-[85%] md:max-w-[72%] bg-chatgpt-userBubble hover:bg-chatgpt-userBubbleHover transition border border-gray-200 text-gray-900 px-5 py-3.5 rounded-3xl shadow-sm text-[15px] leading-relaxed break-words whitespace-pre-wrap select-text font-normal">
                             {m.content}
                           </div>
                         </div>
@@ -728,23 +754,22 @@
 
                         {/* Assistant Response Body on Left */}
                         <div class="flex-1 max-w-[92%] overflow-hidden space-y-3">
-                          {/* Markdown Rendered Content */}
+                          {/* Markdown Rendered Content without emoji stickers before code */}
                           <div
-                            class="prose prose-invert max-w-none text-chatgpt-text leading-relaxed text-[15px] select-text"
+                            class="prose prose-neutral max-w-none text-gray-900 leading-relaxed text-[15px] select-text"
                             dangerouslySetInnerHTML={{ __html: marked.parse(m.content || '') }}
                           />
 
                           {/* Citations List if available */}
                           {m.metadata && m.metadata.citations && m.metadata.citations.length > 0 && (
-                            <div class="mt-3 text-xs text-chatgpt-grayIcon space-y-1.5 bg-black/25 border border-white/5 p-3 rounded-lg">
-                              <div class="font-semibold text-gray-300 text-[11px] flex items-center gap-1.5">
-                                <span>📚</span>
-                                <span>Sources & References:</span>
+                            <div class="mt-3 text-xs text-gray-600 space-y-1.5 bg-gray-50 border border-gray-200 p-3.5 rounded-lg">
+                              <div class="font-semibold text-gray-800 text-[11px]">
+                                Verified Sources & References:
                               </div>
                               {m.metadata.citations.map((c, i) => (
                                 <div key={i} class="truncate flex items-center gap-2">
-                                  <span class="text-emerald-400 font-mono font-medium text-[11px]">[{i+1}]</span>{' '}
-                                  <a href={c.url} target="_blank" rel="noopener noreferrer" class="hover:underline text-chatgpt-text truncate">
+                                  <span class="text-emerald-600 font-mono font-medium text-[11px]">[{i+1}]</span>{' '}
+                                  <a href={c.url} target="_blank" rel="noopener noreferrer" class="hover:underline text-gray-800 font-medium truncate">
                                     {c.title || c.url}
                                   </a>
                                   {c.domain && (
@@ -756,16 +781,16 @@
                           )}
 
                           {/* Attribution Badges & Action Buttons */}
-                          <div class="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 mt-2">
+                          <div class="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 mt-2">
                             <div class="flex flex-wrap items-center gap-1.5">
                               {m.metadata?.category && (
-                                <span class="text-[10px] bg-sky-950/70 text-sky-300 border border-sky-800/50 px-2 py-0.5 rounded-full font-medium">
+                                <span class="text-[10px] bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded-full font-medium">
                                   {m.metadata.category}
                                 </span>
                               )}
                               {m.metadata?.agents_used && m.metadata.agents_used.map(ag => (
-                                <span key={ag} class="text-[10px] bg-emerald-950/70 text-emerald-300 border border-emerald-800/50 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
-                                  <span>🤖</span> {ag}
+                                <span key={ag} class="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
+                                  agent: {ag}
                                 </span>
                               ))}
                             </div>
@@ -773,11 +798,11 @@
                             {/* Copy button */}
                             <button
                               onClick={() => copyToClipboard(m.content, idx)}
-                              class="text-chatgpt-grayIcon hover:text-white transition p-1.5 rounded hover:bg-white/5 text-xs flex items-center gap-1 select-none"
+                              class="text-gray-400 hover:text-gray-800 transition p-1.5 rounded hover:bg-gray-100 text-xs flex items-center gap-1 select-none"
                               title="Copy response"
                             >
                               {copiedIndex === idx ? (
-                                <span class="text-emerald-400 text-xs font-medium">Copied!</span>
+                                <span class="text-emerald-600 text-xs font-medium">Copied</span>
                               ) : (
                                 <CopyIcon />
                               )}
@@ -794,9 +819,9 @@
                       <div class="shrink-0 mt-1">
                         <AssistantAvatar />
                       </div>
-                      <div class="flex items-center gap-2 text-xs text-chatgpt-grayIcon py-2">
-                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span class="text-gray-300">LangGraph Multi-Agent Assistant is reasoning & generating...</span>
+                      <div class="flex items-center gap-2 text-xs text-gray-500 py-2">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span class="text-gray-700">LangGraph Assistant is reasoning and generating response...</span>
                         <span class="cursor-blink"></span>
                       </div>
                     </div>
@@ -807,30 +832,30 @@
             </div>
 
             {/* ======================================================== */}
-            {/* FLOATING BOTTOM INPUT BAR WITH FILE UPLOAD               */}
+            {/* FLOATING BOTTOM INPUT BAR ON WHITE CANVAS                */}
             {/* ======================================================== */}
-            <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-chatgpt-main via-chatgpt-main to-transparent pt-6 pb-4 px-4">
+            <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-6 pb-4 px-4">
               <div class="max-w-3xl mx-auto">
-                {/* Attached File Chip / Upload Status */}
+                {/* Attached File Chip without emoji sticker */}
                 {attachedFile && (
-                  <div class="mb-2 flex items-center justify-between bg-[#2f2f2f] border border-white/10 rounded-lg px-3 py-2 text-xs text-white shadow-md animate-in fade-in duration-150">
+                  <div class="mb-2 flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 shadow-sm animate-in fade-in duration-150">
                     <div class="flex items-center gap-2 truncate">
-                      <span class="text-base">📄</span>
+                      <FileOutlineIcon />
                       <span class="font-medium truncate">{attachedFile.name}</span>
-                      <span class="text-chatgpt-grayIcon text-[11px]">({(attachedFile.size / 1024).toFixed(1)} KB)</span>
+                      <span class="text-gray-500 text-[11px]">({(attachedFile.size / 1024).toFixed(1)} KB)</span>
                       {isUploading && (
-                        <span class="text-amber-400 flex items-center gap-1 text-[11px] font-medium ml-2">
-                          <span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                        <span class="text-amber-600 flex items-center gap-1 text-[11px] font-medium ml-2">
+                          <span class="inline-block w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
                           Indexing chunks into Qdrant...
                         </span>
                       )}
                       {uploadSuccessMsg && (
-                        <span class="text-emerald-400 text-[11px] font-medium ml-2">✓ {uploadSuccessMsg}</span>
+                        <span class="text-emerald-600 text-[11px] font-medium ml-2">Indexed</span>
                       )}
                     </div>
                     <button
                       onClick={() => setAttachedFile(null)}
-                      class="text-chatgpt-grayIcon hover:text-white p-1 rounded"
+                      class="text-gray-400 hover:text-gray-800 p-1 rounded"
                     >
                       ✕
                     </button>
@@ -839,7 +864,7 @@
 
                 <form
                   onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-                  class="relative flex items-center bg-chatgpt-input border border-black/10 dark:border-gray-900/50 shadow-[0_0_15px_rgba(0,0,0,0.15)] rounded-xl overflow-hidden focus-within:border-chatgpt-grayIcon transition pl-2"
+                  class="relative flex items-center bg-white border border-gray-300 shadow-[0_0_15px_rgba(0,0,0,0.06)] rounded-xl overflow-hidden focus-within:border-gray-500 transition pl-2"
                 >
                   {/* Hidden File Input & Paperclip Attachment Button */}
                   <input
@@ -853,8 +878,8 @@
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
-                    class="p-2 text-chatgpt-grayIcon hover:text-white transition rounded-lg hover:bg-black/20 disabled:opacity-40"
-                    title="Attach & index file (PDF, Word, Text, CSV, etc.)"
+                    class="p-2 text-gray-500 hover:text-gray-900 transition rounded-lg hover:bg-gray-100 disabled:opacity-40"
+                    title="Attach document (PDF, Word, Text, CSV)"
                   >
                     <PaperclipIcon />
                   </button>
@@ -863,24 +888,24 @@
                     type="text"
                     value={inputQuery}
                     onChange={(e) => setInputQuery(e.target.value)}
-                    placeholder="Send a message or attach any file."
-                    class="w-full bg-transparent px-3 py-3.5 pr-12 text-sm text-white placeholder-chatgpt-grayIcon focus:outline-none"
+                    placeholder="Send a message."
+                    class="w-full bg-transparent px-3 py-3.5 pr-12 text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
                   />
                   <button
                     type="submit"
                     disabled={!inputQuery.trim() || isLoading}
-                    class="absolute right-3 p-1.5 rounded-md hover:bg-black/20 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer"
+                    class="absolute right-3 p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer"
                   >
                     <SendIcon active={!!inputQuery.trim()} />
                   </button>
                 </form>
 
-                {/* Footer disclaimer matching screenshot */}
-                <div class="text-[11px] text-center text-chatgpt-grayIcon mt-2 select-none">
+                {/* Footer disclaimer matching clean aesthetic */}
+                <div class="text-[11px] text-center text-gray-400 mt-2 select-none">
                   Free Research Preview. ChatGPT may produce inaccurate information about people, places, or facts.{' '}
                   <span
                     onClick={() => { setActiveModalTab("documents"); setShowModal(true); }}
-                    class="underline cursor-pointer hover:text-white"
+                    class="underline cursor-pointer hover:text-gray-700"
                   >
                     ChatGPT May 12 Version
                   </span>
@@ -890,60 +915,60 @@
           </div>
 
           {/* ======================================================== */}
-          {/* PLUS / MEMORY / DOCUMENTS SETTINGS MODAL                 */}
+          {/* PLUS / MEMORY / DOCUMENTS SETTINGS MODAL (Light Style)   */}
           {/* ======================================================== */}
           {showModal && (
-            <div class="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-              <div class="bg-chatgpt-sidebar border border-white/10 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden text-chatgpt-text">
+            <div class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+              <div class="bg-white border border-gray-200 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden text-gray-800">
                 {/* Modal Header */}
-                <div class="p-4 border-b border-white/10 flex items-center justify-between">
+                <div class="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
                   <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-md bg-[#10a37f] text-white flex items-center justify-center">
+                    <div class="w-8 h-8 rounded-lg bg-[#10A37F] text-white flex items-center justify-center shadow-sm">
                       <OpenAIIcon />
                     </div>
                     <div>
-                      <h3 class="font-semibold text-sm text-white">ChatGPT Multi-Agent Knowledge System</h3>
-                      <div class="text-[11px] text-chatgpt-grayIcon">Document Ingestion, LangGraph Orchestration & Memory</div>
+                      <h3 class="font-semibold text-sm text-gray-900">ChatGPT Multi-Agent Knowledge System</h3>
+                      <div class="text-[11px] text-gray-500">Document Ingestion, LangGraph Orchestration & Memory</div>
                     </div>
                   </div>
-                  <button onClick={() => setShowModal(false)} class="text-chatgpt-grayIcon hover:text-white text-lg px-2">✕</button>
+                  <button onClick={() => setShowModal(false)} class="text-gray-400 hover:text-gray-800 text-lg px-2">✕</button>
                 </div>
 
                 {/* Modal Navigation Tabs */}
-                <div class="flex border-b border-white/10 bg-black/20 px-4">
+                <div class="flex border-b border-gray-200 bg-gray-50 px-4">
                   <button
                     onClick={() => setActiveModalTab("documents")}
-                    class={`py-2.5 px-3 text-xs font-medium border-b-2 transition ${activeModalTab === "documents" ? "border-emerald-500 text-white" : "border-transparent text-chatgpt-grayIcon hover:text-white"}`}
+                    class={`py-2.5 px-3 text-xs font-medium border-b-2 transition ${activeModalTab === "documents" ? "border-emerald-600 text-emerald-700" : "border-transparent text-gray-500 hover:text-gray-800"}`}
                   >
-                    📁 Ingested Documents ({uploadedDocs.length})
+                    Ingested Documents ({uploadedDocs.length})
                   </button>
                   <button
                     onClick={() => setActiveModalTab("memory")}
-                    class={`py-2.5 px-3 text-xs font-medium border-b-2 transition ${activeModalTab === "memory" ? "border-emerald-500 text-white" : "border-transparent text-chatgpt-grayIcon hover:text-white"}`}
+                    class={`py-2.5 px-3 text-xs font-medium border-b-2 transition ${activeModalTab === "memory" ? "border-emerald-600 text-emerald-700" : "border-transparent text-gray-500 hover:text-gray-800"}`}
                   >
-                    🧠 Long-Term Memory ({memories.length})
+                    Long-Term Memory ({memories.length})
                   </button>
                   <button
                     onClick={() => setActiveModalTab("agents")}
-                    class={`py-2.5 px-3 text-xs font-medium border-b-2 transition ${activeModalTab === "agents" ? "border-emerald-500 text-white" : "border-transparent text-chatgpt-grayIcon hover:text-white"}`}
+                    class={`py-2.5 px-3 text-xs font-medium border-b-2 transition ${activeModalTab === "agents" ? "border-emerald-600 text-emerald-700" : "border-transparent text-gray-500 hover:text-gray-800"}`}
                   >
-                    🤖 Multi-Agent Graph
+                    Multi-Agent Graph
                   </button>
                   <button
                     onClick={() => setActiveModalTab("user")}
-                    class={`py-2.5 px-3 text-xs font-medium border-b-2 transition ${activeModalTab === "user" ? "border-emerald-500 text-white" : "border-transparent text-chatgpt-grayIcon hover:text-white"}`}
+                    class={`py-2.5 px-3 text-xs font-medium border-b-2 transition ${activeModalTab === "user" ? "border-emerald-600 text-emerald-700" : "border-transparent text-gray-500 hover:text-gray-800"}`}
                   >
-                    ⚙️ User & Profile
+                    User & Profile
                   </button>
                 </div>
 
                 {/* Modal Body */}
-                <div class="p-5 overflow-y-auto flex-1 space-y-4 custom-scrollbar">
+                <div class="p-5 overflow-y-auto flex-1 space-y-4 custom-scrollbar bg-white">
                   {/* TAB 1: Ingested Documents */}
                   {activeModalTab === "documents" && (
                     <div class="space-y-4">
                       {/* Document Upload Zone */}
-                      <div class="border-2 border-dashed border-white/15 hover:border-emerald-500/50 rounded-xl p-5 text-center transition bg-white/[0.02]">
+                      <div class="border-2 border-dashed border-gray-300 hover:border-emerald-500 rounded-xl p-5 text-center transition bg-gray-50">
                         <input
                           type="file"
                           ref={modalFileInputRef}
@@ -951,18 +976,20 @@
                           accept=".pdf,.docx,.pptx,.doc,.txt,.md,.json,.csv,.py,.html"
                           class="hidden"
                         />
-                        <div class="text-3xl mb-2">📁</div>
-                        <div class="text-xs font-semibold text-white mb-1">
+                        <div class="flex justify-center mb-2 text-gray-500">
+                          <FileOutlineIcon />
+                        </div>
+                        <div class="text-xs font-semibold text-gray-900 mb-1">
                           Upload Document into Knowledge Base
                         </div>
-                        <div class="text-[11px] text-chatgpt-grayIcon mb-3">
+                        <div class="text-[11px] text-gray-500 mb-3">
                           Supports PDF, DOCX, PPTX, TXT, MD, CSV, JSON, and HTML. Files are chunked and embedded in Qdrant.
                         </div>
                         <button
                           type="button"
                           onClick={() => modalFileInputRef.current?.click()}
                           disabled={isUploading}
-                          class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-4 py-2 rounded-lg font-medium transition inline-flex items-center gap-2"
+                          class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-4 py-2 rounded-lg font-medium transition inline-flex items-center gap-2 shadow-sm"
                         >
                           <PaperclipIcon />
                           <span>{isUploading ? "Indexing into Qdrant..." : "Choose File to Ingest"}</span>
@@ -971,23 +998,23 @@
 
                       {/* Uploaded Documents List */}
                       <div class="space-y-2">
-                        <div class="font-semibold text-xs text-chatgpt-subtext">Indexed Documents in Knowledge Base ({uploadedDocs.length})</div>
+                        <div class="font-semibold text-xs text-gray-700">Indexed Documents ({uploadedDocs.length})</div>
                         {uploadedDocs.map(doc => (
-                          <div key={doc.id} class="bg-white/5 border border-white/10 rounded-lg p-3 flex items-center justify-between">
+                          <div key={doc.id} class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between">
                             <div class="flex items-center gap-3 truncate">
-                              <span class="text-lg">📄</span>
+                              <FileOutlineIcon />
                               <div class="truncate">
-                                <div class="text-xs font-medium text-white truncate">{doc.file_name}</div>
-                                <div class="text-[10px] text-chatgpt-grayIcon flex items-center gap-2 mt-0.5">
-                                  <span class="uppercase bg-white/10 px-1 rounded">{doc.file_type}</span>
+                                <div class="text-xs font-medium text-gray-900 truncate">{doc.file_name}</div>
+                                <div class="text-[10px] text-gray-500 flex items-center gap-2 mt-0.5">
+                                  <span class="uppercase bg-gray-200 text-gray-700 px-1 rounded">{doc.file_type}</span>
                                   <span>{(doc.file_size / 1024).toFixed(1)} KB</span>
-                                  <span class="text-emerald-400 font-mono font-medium">{doc.chunks_count} chunks indexed</span>
+                                  <span class="text-emerald-600 font-mono font-medium">{doc.chunks_count} chunks indexed</span>
                                 </div>
                               </div>
                             </div>
                             <button
                               onClick={() => handleDeleteDoc(doc.id)}
-                              class="text-chatgpt-grayIcon hover:text-rose-400 text-xs px-2 py-1 rounded transition"
+                              class="text-gray-400 hover:text-red-600 text-xs px-2 py-1 rounded transition"
                               title="Delete document"
                             >
                               <TrashIcon />
@@ -995,8 +1022,8 @@
                           </div>
                         ))}
                         {uploadedDocs.length === 0 && (
-                          <div class="text-xs text-chatgpt-grayIcon italic p-4 text-center border border-dashed border-white/10 rounded-lg">
-                            No custom documents uploaded yet. Ingest any file using the button above or the paperclip (📎) in the chat input.
+                          <div class="text-xs text-gray-500 italic p-4 text-center border border-dashed border-gray-200 rounded-lg">
+                            No custom documents uploaded yet. Ingest any file using the button above or the paperclip in the chat input.
                           </div>
                         )}
                       </div>
@@ -1007,15 +1034,15 @@
                   {activeModalTab === "memory" && (
                     <div class="space-y-4">
                       {/* Explicit Memory Form */}
-                      <form onSubmit={handleSaveMemory} class="bg-white/5 border border-white/10 rounded-lg p-3 space-y-3">
-                        <div class="font-semibold text-xs text-white">Save Explicit Memory</div>
+                      <form onSubmit={handleSaveMemory} class="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-3">
+                        <div class="font-semibold text-xs text-gray-900">Save Explicit Memory</div>
                         <div class="grid grid-cols-2 gap-2">
                           <div>
-                            <label class="text-[10px] text-chatgpt-grayIcon">Category</label>
+                            <label class="text-[10px] text-gray-600">Category</label>
                             <select
                               value={newMemCategory}
                               onChange={(e) => setNewMemCategory(e.target.value)}
-                              class="w-full bg-chatgpt-input border border-white/10 rounded px-2 py-1.5 text-xs text-white mt-0.5 focus:outline-none"
+                              class="w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-xs text-gray-900 mt-0.5 focus:outline-none"
                             >
                               <option value="user_preferences">User Preferences</option>
                               <option value="user_context">User Context</option>
@@ -1025,56 +1052,56 @@
                             </select>
                           </div>
                           <div>
-                            <label class="text-[10px] text-chatgpt-grayIcon">Importance (1-5)</label>
+                            <label class="text-[10px] text-gray-600">Importance (1-5)</label>
                             <input
                               type="number"
                               min="1"
                               max="5"
                               value={newMemImp}
                               onChange={(e) => setNewMemImp(e.target.value)}
-                              class="w-full bg-chatgpt-input border border-white/10 rounded px-2 py-1.5 text-xs text-white mt-0.5 focus:outline-none"
+                              class="w-full bg-white border border-gray-300 rounded px-2 py-1.5 text-xs text-gray-900 mt-0.5 focus:outline-none"
                             />
                           </div>
                         </div>
                         <div>
-                          <label class="text-[10px] text-chatgpt-grayIcon">Content (No passwords or API keys)</label>
+                          <label class="text-[10px] text-gray-600">Content (No passwords or API keys)</label>
                           <textarea
                             rows="2"
                             placeholder="e.g. User prefers concise answers with code snippets in Python."
                             value={newMemContent}
                             onChange={(e) => setNewMemContent(e.target.value)}
-                            class="w-full bg-chatgpt-input border border-white/10 rounded px-2.5 py-1.5 text-xs text-white mt-0.5 focus:outline-none focus:border-white/30"
+                            class="w-full bg-white border border-gray-300 rounded px-2.5 py-1.5 text-xs text-gray-900 mt-0.5 focus:outline-none focus:border-gray-500"
                           />
                         </div>
-                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3.5 py-1.5 rounded font-medium transition">
-                          + Save Memory
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3.5 py-1.5 rounded font-medium transition shadow-sm">
+                          Save Memory
                         </button>
                       </form>
 
                       {/* Stored Memories List */}
                       <div class="space-y-2">
-                        <div class="font-semibold text-xs text-chatgpt-subtext">Active Long-Term Memories ({memories.length})</div>
+                        <div class="font-semibold text-xs text-gray-700">Active Long-Term Memories ({memories.length})</div>
                         {memories.map(mem => (
-                          <div key={mem.id} class="bg-white/5 border border-white/10 rounded-lg p-3 flex items-start justify-between">
+                          <div key={mem.id} class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-start justify-between">
                             <div class="space-y-1 pr-2">
                               <div class="flex items-center gap-2">
-                                <span class="text-[10px] bg-amber-950/80 text-amber-300 border border-amber-800/80 px-2 py-0.5 rounded font-medium">
+                                <span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-medium">
                                   {mem.category.replace('_', ' ').toUpperCase()}
                                 </span>
-                                <span class="text-[10px] text-chatgpt-grayIcon">Importance: {mem.importance}/5</span>
+                                <span class="text-[10px] text-gray-500">Importance: {mem.importance}/5</span>
                               </div>
-                              <div class="text-xs text-chatgpt-text">{mem.content}</div>
+                              <div class="text-xs text-gray-800">{mem.content}</div>
                             </div>
                             <button
                               onClick={() => handleDeleteMemory(mem.id)}
-                              class="text-chatgpt-grayIcon hover:text-rose-400 text-xs px-2 py-1 rounded transition"
+                              class="text-gray-400 hover:text-red-600 text-xs px-2 py-1 rounded transition"
                             >
                               ✕
                             </button>
                           </div>
                         ))}
                         {memories.length === 0 && (
-                          <div class="text-xs text-chatgpt-grayIcon italic p-4 text-center border border-dashed border-white/10 rounded-lg">
+                          <div class="text-xs text-gray-500 italic p-4 text-center border border-dashed border-gray-200 rounded-lg">
                             No persistent memories yet. The system automatically extracts key preferences, or you can add them above.
                           </div>
                         )}
@@ -1085,36 +1112,36 @@
                   {/* TAB 3: Multi-Agent System */}
                   {activeModalTab === "agents" && (
                     <div class="space-y-3 text-xs">
-                      <div class="p-3 bg-white/5 border border-white/10 rounded-lg space-y-2">
-                        <div class="font-semibold text-white">LangGraph Orchestration Pipeline</div>
-                        <p class="text-chatgpt-grayIcon text-[11px] leading-relaxed">
+                      <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
+                        <div class="font-semibold text-gray-900">LangGraph Orchestration Pipeline</div>
+                        <p class="text-gray-600 text-[11px] leading-relaxed">
                           Incoming queries are routed by the Supervisor node to specialized agents via conditional StateGraph routing and merged into shared state.
                         </p>
                       </div>
                       <div class="grid grid-cols-2 gap-2">
-                        <div class="p-3 bg-white/5 border border-white/10 rounded-lg">
-                          <div class="font-semibold text-white">1. Supervisor Agent</div>
-                          <div class="text-[11px] text-chatgpt-grayIcon">Intent detection & dynamic parallel dispatch</div>
+                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div class="font-semibold text-gray-900">1. Supervisor Agent</div>
+                          <div class="text-[11px] text-gray-600">Intent detection and parallel dispatch</div>
                         </div>
-                        <div class="p-3 bg-white/5 border border-white/10 rounded-lg">
-                          <div class="font-semibold text-white">2. RAG Agent</div>
-                          <div class="text-[11px] text-chatgpt-grayIcon">Qdrant Cloud vector search + FlashRank reranker</div>
+                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div class="font-semibold text-gray-900">2. RAG Agent</div>
+                          <div class="text-[11px] text-gray-600">Qdrant Cloud vector search and FlashRank reranker</div>
                         </div>
-                        <div class="p-3 bg-white/5 border border-white/10 rounded-lg">
-                          <div class="font-semibold text-white">3. Web Search Agent</div>
-                          <div class="text-[11px] text-chatgpt-grayIcon">Tavily Search API + DuckDuckGo fallback</div>
+                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div class="font-semibold text-gray-900">3. Web Search Agent</div>
+                          <div class="text-[11px] text-gray-600">Tavily Search API and DuckDuckGo fallback</div>
                         </div>
-                        <div class="p-3 bg-white/5 border border-white/10 rounded-lg">
-                          <div class="font-semibold text-white">4. Research Agent</div>
-                          <div class="text-[11px] text-chatgpt-grayIcon">Evidence synthesis & multi-source fact cross-check</div>
+                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div class="font-semibold text-gray-900">4. Research Agent</div>
+                          <div class="text-[11px] text-gray-600">Evidence synthesis and multi-source cross-check</div>
                         </div>
-                        <div class="p-3 bg-white/5 border border-white/10 rounded-lg">
-                          <div class="font-semibold text-white">5. Tool Agent</div>
-                          <div class="text-[11px] text-chatgpt-grayIcon">Calculator, Python executor & date tools</div>
+                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div class="font-semibold text-gray-900">5. Tool Agent</div>
+                          <div class="text-[11px] text-gray-600">Calculator, Python executor, and date utilities</div>
                         </div>
-                        <div class="p-3 bg-white/5 border border-white/10 rounded-lg">
-                          <div class="font-semibold text-white">6. Response Agent</div>
-                          <div class="text-[11px] text-chatgpt-grayIcon">Grounded synthesis with verified citations</div>
+                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div class="font-semibold text-gray-900">6. Response Agent</div>
+                          <div class="text-[11px] text-gray-600">Grounded synthesis with verified citations</div>
                         </div>
                       </div>
                     </div>
@@ -1123,30 +1150,30 @@
                   {/* TAB 4: User & Profile */}
                   {activeModalTab === "user" && (
                     <div class="space-y-4 text-xs">
-                      <div class="p-3 bg-white/5 border border-white/10 rounded-lg space-y-3">
-                        <div class="font-semibold text-white">User Identification & Isolation</div>
+                      <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
+                        <div class="font-semibold text-gray-900">User Identification & Isolation</div>
                         <div>
-                          <label class="text-[10px] text-chatgpt-grayIcon">Display Email (matching screenshot)</label>
+                          <label class="text-[10px] text-gray-600">Display Email</label>
                           <input
                             type="text"
                             value={userEmail}
                             onChange={(e) => setUserEmail(e.target.value)}
-                            class="w-full bg-chatgpt-input border border-white/10 rounded px-2.5 py-1.5 text-xs text-white mt-1"
+                            class="w-full bg-white border border-gray-300 rounded px-2.5 py-1.5 text-xs text-gray-900 mt-1"
                           />
                         </div>
                         <div>
-                          <label class="text-[10px] text-chatgpt-grayIcon">Database User ID (Isolation key)</label>
+                          <label class="text-[10px] text-gray-600">Database User ID (Isolation key)</label>
                           <input
                             type="text"
                             value={userId}
                             onChange={(e) => setUserId(e.target.value)}
-                            class="w-full bg-chatgpt-input border border-white/10 rounded px-2.5 py-1.5 text-xs text-white mt-1"
+                            class="w-full bg-white border border-gray-300 rounded px-2.5 py-1.5 text-xs text-gray-900 mt-1"
                           />
                         </div>
                       </div>
-                      <div class="p-3 bg-white/5 border border-white/10 rounded-lg space-y-2">
-                        <div class="font-semibold text-white">Data Retention & Control</div>
-                        <p class="text-chatgpt-grayIcon text-[11px]">
+                      <div class="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
+                        <div class="font-semibold text-gray-900">Data Retention & Control</div>
+                        <p class="text-gray-600 text-[11px]">
                           All messages, documents, and memories are stored locally in SQLite (`processed_data/memory.db`) or PostgreSQL (`DATABASE_URL`). You can delete individual memories or chats anytime.
                         </p>
                       </div>

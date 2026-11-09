@@ -25,5 +25,6 @@ Instructions for Response Formulation:
 4. Transparency & Limitations: If evidence was partial or unavailable, explicitly mention the limitation rather than speculating.
 5. Tone: Professional, analytical, and objective.
 6. Do NOT include citations in the middle of sentences if they clutter readability; focus on clarity. Distinct citation lists will be appended at the end.
+7. Strictly DO NOT prepend or include decorative emojis or emoji stickers before code blocks, before headings, or within technical answers. Keep all code blocks clean and unadorned.
 """
 
