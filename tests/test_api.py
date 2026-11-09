@@ -75,6 +75,41 @@ class TestMultiAgentAPI(unittest.TestCase):
         del_res = delete_conversation(self.conv_id, user_id=self.user_id)
         self.assertEqual(del_res["status"], "deleted")
 
+    @patch("app.api.routes.upload.process_file")
+    def test_document_upload_and_listing(self, mock_process_file):
+        from unittest.mock import MagicMock
+        from app.api.routes.upload import upload_document, list_uploaded_documents, delete_document
+        from app.database import SessionLocal
+
+        mock_process_file.return_value = 7
+        db = SessionLocal()
+        try:
+            mock_file = MagicMock()
+            mock_file.filename = "architecture.pdf"
+            mock_file.file.read.return_value = b"%PDF-1.4 Mock document text"
+
+            # 1. Upload document
+            res = upload_document(file=mock_file, user_id=self.user_id, db=db)
+            self.assertTrue(res.success)
+            self.assertEqual(res.file_name, "architecture.pdf")
+            self.assertEqual(res.chunks_stored, 7)
+
+            # 2. List documents
+            docs = list_uploaded_documents(user_id=self.user_id, db=db)
+            self.assertEqual(len(docs), 1)
+            self.assertEqual(docs[0].file_name, "architecture.pdf")
+
+            # 3. Delete document
+            doc_id = docs[0].id
+            del_res = delete_document(doc_id=doc_id, user_id=self.user_id, db=db)
+            self.assertTrue(del_res["success"])
+
+            # 4. Verify empty list
+            docs_after = list_uploaded_documents(user_id=self.user_id, db=db)
+            self.assertEqual(len(docs_after), 0)
+        finally:
+            db.close()
+
 
 if __name__ == "__main__":
     unittest.main()

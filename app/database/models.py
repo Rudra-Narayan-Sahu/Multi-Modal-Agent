@@ -86,3 +86,18 @@ class ResearchSession(Base):
 
     conversation = relationship("Conversation", back_populates="research_sessions")
 
+
+class UploadedDocument(Base):
+    __tablename__ = "uploaded_documents"
+
+    id = Column(String(64), primary_key=True, default=lambda: f"doc_{uuid.uuid4().hex[:12]}")
+    user_id = Column(String(64), ForeignKey("users.id"), nullable=False, index=True)
+    file_name = Column(String(255), nullable=False)
+    file_type = Column(String(32), nullable=False)
+    file_size = Column(Integer, default=0)
+    chunks_count = Column(Integer, default=0)
+    status = Column(String(32), default="indexed")
+    created_at = Column(DateTime, default=utc_now)
+
+    user = relationship("User")
+

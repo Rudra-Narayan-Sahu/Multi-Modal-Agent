@@ -138,12 +138,12 @@ with st.sidebar:
     
     col_new, col_del = st.columns([1, 1])
     with col_new:
-        if st.button("➕ New Chat", use_container_width=True):
+        if st.button("New Chat", use_container_width=True):
             st.session_state.conversation_id = f"session_{uuid.uuid4().hex[:8]}"
             st.session_state.messages = []
             st.rerun()
     with col_del:
-        if st.button("🗑️ Delete Chat", use_container_width=True):
+        if st.button("Delete Chat", use_container_width=True):
             conversation_manager.delete_conversation(st.session_state.conversation_id, st.session_state.user_id)
             st.session_state.conversation_id = f"session_{uuid.uuid4().hex[:8]}"
             st.session_state.messages = []
@@ -168,9 +168,39 @@ with st.sidebar:
         reload_messages_from_db()
         st.rerun()
 
+    # Document Upload to Qdrant Vector DB
+    st.markdown("---")
+    st.subheader("📁 Ingest Document")
+    uploaded_file = st.file_uploader(
+        "Upload PDF, Word, Text, CSV, JSON",
+        type=["pdf", "docx", "pptx", "txt", "md", "csv", "json", "html"],
+        key="file_uploader"
+    )
+    if uploaded_file is not None:
+        if st.button("⚡ Index to Knowledge Base", use_container_width=True, key="btn_index_doc"):
+            with st.spinner(f"Ingesting '{uploaded_file.name}' into Qdrant..."):
+                import tempfile
+                import shutil
+                from app.ingestion.processor import process_file
+                t_dir = tempfile.mkdtemp()
+                t_path = os.path.join(t_dir, uploaded_file.name)
+                try:
+                    with open(t_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+                    count = process_file(
+                        file_path=t_path,
+                        file_name=uploaded_file.name,
+                        source_name=f"User Upload ({st.session_state.user_id}): {uploaded_file.name}"
+                    )
+                    st.success(f"Successfully indexed {count} chunks into Qdrant!")
+                except Exception as ex:
+                    st.error(f"Ingestion failed: {ex}")
+                finally:
+                    shutil.rmtree(t_dir, ignore_errors=True)
+
     # Long-Term Memory Manager
     st.markdown("---")
-    with st.expander("🧠 Persistent Long-Term Memories", expanded=False):
+    with st.expander("Persistent Long-Term Memories", expanded=False):
         st.caption("Memories recalled across distinct conversations.")
         
         # Add new memory form

@@ -14,6 +14,7 @@ from app.api.routes.chat import router as chat_router
 from app.api.routes.agents import router as agents_router
 from app.api.routes.conversations import router as conversations_router
 from app.api.routes.memory import router as memory_router
+from app.api.routes.upload import router as upload_router
 
 app = FastAPI(
     title="Multi-Agent RAG Assistant API",
@@ -32,11 +33,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount Multi-Agent & Memory Endpoints
+# Mount Multi-Agent, Memory, and Upload Endpoints
 app.include_router(chat_router)
 app.include_router(agents_router)
 app.include_router(conversations_router)
 app.include_router(memory_router)
+app.include_router(upload_router)
 
 # Mount React + Tailwind static frontend
 from fastapi.staticfiles import StaticFiles
