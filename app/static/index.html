@@ -22,7 +22,8 @@
             chatgpt: {
               sidebar: '#202123',
               main: '#343541',
-              message: '#444654',
+              userBubble: '#2f2f2f',
+              userBubbleHover: '#383838',
               card: '#3E3F4B',
               input: '#40414F',
               border: '#4D4D4F',
@@ -54,27 +55,27 @@
     
     .prose pre {
       background: #202123;
-      border-radius: 6px;
-      padding: 12px 14px;
+      border-radius: 8px;
+      padding: 14px 16px;
       overflow-x: auto;
-      margin: 10px 0;
+      margin: 12px 0;
       border: 1px solid rgba(255,255,255,0.08);
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 0.85rem;
     }
     .prose code {
       background: rgba(255, 255, 255, 0.1);
-      padding: 2px 5px;
+      padding: 2px 6px;
       border-radius: 4px;
-      font-size: 0.85em;
+      font-size: 0.88em;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
     .prose table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9em; }
-    .prose th, .prose td { border: 1px solid #565869; padding: 6px 10px; text-align: left; }
+    .prose th, .prose td { border: 1px solid #565869; padding: 7px 12px; text-align: left; }
     .prose th { background: rgba(255, 255, 255, 0.06); font-weight: 600; }
     .prose ul { list-style-type: disc; margin-left: 24px; margin-top: 6px; margin-bottom: 6px; }
     .prose ol { list-style-type: decimal; margin-left: 24px; margin-top: 6px; margin-bottom: 6px; }
-    .prose p { margin-bottom: 10px; line-height: 1.6; }
+    .prose p { margin-bottom: 12px; line-height: 1.65; }
     .prose a { color: #10a37f; text-decoration: underline; }
     .cursor-blink {
       display: inline-block;
@@ -97,7 +98,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // SVG Icons matching original ChatGPT interface exactly
+    // SVG Icons
     const PlusIcon = () => (
       <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 shrink-0" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
         <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -115,6 +116,13 @@
       <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-3.5 w-3.5 text-chatgpt-grayIcon hover:text-white transition" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
         <polyline points="3 6 5 6 21 6"></polyline>
         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+    );
+
+    const CopyIcon = () => (
+      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-3.5 w-3.5" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
       </svg>
     );
 
@@ -168,7 +176,7 @@
     );
 
     const UserAvatar = ({ email }) => (
-      <div class="w-7 h-7 rounded-sm overflow-hidden flex items-center justify-center font-bold text-xs shrink-0 select-none bg-gradient-to-tr from-amber-700 to-amber-500 text-white shadow-inner">
+      <div class="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center font-bold text-xs shrink-0 select-none bg-gradient-to-tr from-amber-700 to-amber-500 text-white shadow-inner">
         {email ? email.charAt(0).toUpperCase() : 'R'}
       </div>
     );
@@ -206,7 +214,7 @@
       const [newMemContent, setNewMemContent] = useState("");
       const [newMemCategory, setNewMemCategory] = useState("explicit_notes");
       const [newMemImp, setNewMemImp] = useState(3);
-      const [agentStatus, setAgentStatus] = useState(null);
+      const [copiedIndex, setCopiedIndex] = useState(null);
       const messagesEndRef = useRef(null);
 
       // Load conversations from DB
@@ -255,26 +263,12 @@
             const data = await res.json();
             setMemories(data);
           }
-        } catch (e) {
-          console.error("Failed to load memories", e);
-        }
-      };
-
-      // Load multi-agent system status
-      const loadAgentStatus = async () => {
-        try {
-          const res = await fetch(`/api/agents/status`);
-          if (res.ok) {
-            const data = await res.json();
-            setAgentStatus(data);
-          }
         } catch (e) {}
       };
 
       useEffect(() => {
         loadConversations();
         loadMemories();
-        loadAgentStatus();
       }, [userId]);
 
       useEffect(() => {
@@ -317,9 +311,7 @@
           await fetch(`/api/conversations/${cid}?user_id=${userId}`, { method: "DELETE" });
           await loadConversations();
           if (activeConvId === cid) handleNewChat();
-        } catch (e) {
-          console.error("Failed to delete", e);
-        }
+        } catch (e) {}
       };
 
       const handleSend = async (customText) => {
@@ -336,7 +328,7 @@
           setActiveConvTitle(text.substring(0, 24));
         }
 
-        // Optimistically add user query
+        // Optimistically add user query (Right side)
         const optimisticUserMsg = { role: "user", content: text, created_at: new Date().toISOString() };
         setMessages(prev => [...prev, optimisticUserMsg]);
         setIsLoading(true);
@@ -384,6 +376,12 @@
         }
       };
 
+      const copyToClipboard = (text, idx) => {
+        navigator.clipboard.writeText(text);
+        setCopiedIndex(idx);
+        setTimeout(() => setCopiedIndex(null), 2000);
+      };
+
       const handleSaveMemory = async (e) => {
         e.preventDefault();
         if (!newMemContent.trim()) return;
@@ -401,9 +399,7 @@
             setNewMemContent("");
             loadMemories();
           }
-        } catch (e) {
-          console.error("Failed to save memory", e);
-        }
+        } catch (e) {}
       };
 
       const handleDeleteMemory = async (mid) => {
@@ -606,78 +602,108 @@
                   </div>
                 </div>
               ) : (
-                /* ACTIVE CHAT STREAM */
-                <div class="w-full flex-1 pb-32">
+                /* ======================================================== */
+                /* ACTIVE CHAT: USER QUERY (RIGHT) & BOT RESPONSE (LEFT)    */
+                /* ======================================================== */
+                <div class="max-w-3xl w-full mx-auto px-4 py-8 space-y-6 pb-36">
                   {messages.map((m, idx) => {
                     const isAssistant = m.role === 'assistant';
+
+                    if (!isAssistant) {
+                      // 1. USER QUERY: ALIGNED TO THE RIGHT
+                      return (
+                        <div key={idx} class="flex justify-end w-full animate-in fade-in duration-150">
+                          <div class="max-w-[85%] md:max-w-[72%] bg-chatgpt-userBubble hover:bg-chatgpt-userBubbleHover transition border border-white/5 text-white px-5 py-3.5 rounded-3xl shadow-sm text-[15px] leading-relaxed break-words whitespace-pre-wrap select-text">
+                            {m.content}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // 2. BOT RESPONSE: ALIGNED TO THE LEFT
                     return (
-                      <div
-                        key={idx}
-                        class={`w-full py-6 px-4 md:px-0 flex justify-center border-b border-black/10 ${isAssistant ? 'bg-chatgpt-message' : 'bg-chatgpt-main'}`}
-                      >
-                        <div class="max-w-3xl w-full flex gap-4 md:gap-6">
-                          {isAssistant ? <AssistantAvatar /> : <UserAvatar email={userEmail} />}
-                          <div class="flex-1 overflow-hidden space-y-2">
-                            {/* Rendered content */}
-                            <div
-                              class="prose prose-invert max-w-none text-chatgpt-text leading-relaxed text-[15px]"
-                              dangerouslySetInnerHTML={{ __html: marked.parse(m.content || '') }}
-                            />
+                      <div key={idx} class="flex justify-start w-full gap-4 animate-in fade-in duration-200">
+                        {/* Assistant Avatar on Left */}
+                        <div class="shrink-0 mt-1">
+                          <AssistantAvatar />
+                        </div>
 
-                            {/* Multi-Agent Attribution Badges */}
-                            {isAssistant && m.metadata && (
-                              <div class="pt-2 flex flex-wrap items-center gap-1.5 border-t border-white/5 mt-3">
-                                {m.metadata.category && (
-                                  <span class="text-[10px] bg-sky-950/70 text-sky-300 border border-sky-800/50 px-2 py-0.5 rounded-full font-medium">
-                                    Intent: {m.metadata.category}
-                                  </span>
-                                )}
-                                {m.metadata.agents_used && m.metadata.agents_used.map(ag => (
-                                  <span key={ag} class="text-[10px] bg-emerald-950/70 text-emerald-300 border border-emerald-800/50 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
-                                    <span>🤖</span> {ag}
-                                  </span>
-                                ))}
-                                {m.metadata.citations && m.metadata.citations.length > 0 && (
-                                  <span class="text-[10px] bg-purple-950/70 text-purple-300 border border-purple-800/50 px-2 py-0.5 rounded-full font-medium">
-                                    📚 {m.metadata.citations.length} Sources Verified
-                                  </span>
-                                )}
-                              </div>
-                            )}
+                        {/* Assistant Response Body on Left */}
+                        <div class="flex-1 max-w-[92%] overflow-hidden space-y-3">
+                          {/* Markdown Rendered Content */}
+                          <div
+                            class="prose prose-invert max-w-none text-chatgpt-text leading-relaxed text-[15px] select-text"
+                            dangerouslySetInnerHTML={{ __html: marked.parse(m.content || '') }}
+                          />
 
-                            {/* Citations List if available */}
-                            {isAssistant && m.metadata && m.metadata.citations && m.metadata.citations.length > 0 && (
-                              <div class="mt-2 text-xs text-chatgpt-grayIcon space-y-1 bg-black/20 p-2.5 rounded">
-                                <div class="font-semibold text-gray-300 text-[11px] mb-1">Sources & References:</div>
-                                {m.metadata.citations.map((c, i) => (
-                                  <div key={i} class="truncate">
-                                    <span class="text-emerald-400 font-mono font-medium">[{i+1}]</span>{' '}
-                                    <a href={c.url} target="_blank" rel="noopener noreferrer" class="hover:underline text-chatgpt-text">
-                                      {c.title || c.url}
-                                    </a>
-                                  </div>
-                                ))}
+                          {/* Citations List if available */}
+                          {m.metadata && m.metadata.citations && m.metadata.citations.length > 0 && (
+                            <div class="mt-3 text-xs text-chatgpt-grayIcon space-y-1.5 bg-black/25 border border-white/5 p-3 rounded-lg">
+                              <div class="font-semibold text-gray-300 text-[11px] flex items-center gap-1.5">
+                                <span>📚</span>
+                                <span>Sources & References:</span>
                               </div>
-                            )}
+                              {m.metadata.citations.map((c, i) => (
+                                <div key={i} class="truncate flex items-center gap-2">
+                                  <span class="text-emerald-400 font-mono font-medium text-[11px]">[{i+1}]</span>{' '}
+                                  <a href={c.url} target="_blank" rel="noopener noreferrer" class="hover:underline text-chatgpt-text truncate">
+                                    {c.title || c.url}
+                                  </a>
+                                  {c.domain && (
+                                    <span class="text-[10px] text-gray-500 font-mono">({c.domain})</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Attribution Badges & Action Buttons */}
+                          <div class="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 mt-2">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                              {m.metadata?.category && (
+                                <span class="text-[10px] bg-sky-950/70 text-sky-300 border border-sky-800/50 px-2 py-0.5 rounded-full font-medium">
+                                  {m.metadata.category}
+                                </span>
+                              )}
+                              {m.metadata?.agents_used && m.metadata.agents_used.map(ag => (
+                                <span key={ag} class="text-[10px] bg-emerald-950/70 text-emerald-300 border border-emerald-800/50 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                                  <span>🤖</span> {ag}
+                                </span>
+                              ))}
+                            </div>
+
+                            {/* Copy button */}
+                            <button
+                              onClick={() => copyToClipboard(m.content, idx)}
+                              class="text-chatgpt-grayIcon hover:text-white transition p-1.5 rounded hover:bg-white/5 text-xs flex items-center gap-1 select-none"
+                              title="Copy response"
+                            >
+                              {copiedIndex === idx ? (
+                                <span class="text-emerald-400 text-xs font-medium">Copied!</span>
+                              ) : (
+                                <CopyIcon />
+                              )}
+                            </button>
                           </div>
                         </div>
                       </div>
                     );
                   })}
 
+                  {/* Generating State on the Left */}
                   {isLoading && (
-                    <div class="w-full py-6 px-4 md:px-0 flex justify-center bg-chatgpt-message border-b border-black/10">
-                      <div class="max-w-3xl w-full flex gap-4 md:gap-6 items-center">
+                    <div class="flex justify-start w-full gap-4 animate-in fade-in duration-150">
+                      <div class="shrink-0 mt-1">
                         <AssistantAvatar />
-                        <div class="flex items-center gap-2 text-xs text-chatgpt-grayIcon">
-                          <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                          <span>LangGraph Multi-Agent Assistant is generating response...</span>
-                          <span class="cursor-blink"></span>
-                        </div>
+                      </div>
+                      <div class="flex items-center gap-2 text-xs text-chatgpt-grayIcon py-2">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span class="text-gray-300">LangGraph Multi-Agent Assistant is reasoning & generating...</span>
+                        <span class="cursor-blink"></span>
                       </div>
                     </div>
                   )}
-                  <div ref={messagesEndRef} />
+                  <div ref={messagesEndRef} class="h-6" />
                 </div>
               )}
             </div>
