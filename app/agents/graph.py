@@ -100,11 +100,20 @@ def run_agent_workflow(
     conversation_id: str = "default_session",
     user_id: str = "default_user"
 ) -> Dict[str, Any]:
-    """Synchronous invocation of the multi-agent graph with thread checkpointing."""
+    """Synchronous invocation of the multi-agent graph with thread checkpointing & memory."""
+    from app.memory.conversation import conversation_manager
+    from app.memory.retriever import memory_retriever
+
+    # Load short-term history and relevant long-term memories
+    history_context = conversation_manager.format_history_context(conversation_id, user_id=user_id)
+    memories = memory_retriever.retrieve_relevant_memories(user_id=user_id, query=query, limit=5)
+
     initial_state: AgentState = {
         "user_query": query,
         "conversation_id": conversation_id,
         "user_id": user_id,
+        "conversation_context": history_context,
+        "relevant_memories": memories,
         "execution_plan": [],
         "selected_agents": [],
         "retrieved_documents": [],
@@ -131,10 +140,18 @@ def stream_agent_workflow(
     user_id: str = "default_user"
 ):
     """Streaming generator yielding updates as nodes complete execution."""
+    from app.memory.conversation import conversation_manager
+    from app.memory.retriever import memory_retriever
+
+    history_context = conversation_manager.format_history_context(conversation_id, user_id=user_id)
+    memories = memory_retriever.retrieve_relevant_memories(user_id=user_id, query=query, limit=5)
+
     initial_state: AgentState = {
         "user_query": query,
         "conversation_id": conversation_id,
         "user_id": user_id,
+        "conversation_context": history_context,
+        "relevant_memories": memories,
         "execution_plan": [],
         "selected_agents": [],
         "retrieved_documents": [],

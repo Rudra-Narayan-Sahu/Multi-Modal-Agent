@@ -1,4 +1,5 @@
 import unittest
+import uuid
 from unittest.mock import patch, MagicMock
 from typing import Dict, Any
 
@@ -195,8 +196,9 @@ class TestMultiAgentSystem(unittest.TestCase):
 
     # --- SCENARIO 10: Follow-up question requiring conversation memory ---
     def test_10_conversation_memory_persistence(self):
-        session_id = "test_memory_session"
-        user = "researcher_1"
+        uid = uuid.uuid4().hex[:8]
+        session_id = f"test_memory_session_{uid}"
+        user = f"researcher_{uid}"
 
         # Turn 1
         conversation_manager.add_turn(

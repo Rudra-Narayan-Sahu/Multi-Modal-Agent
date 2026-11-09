@@ -42,6 +42,8 @@ class AgentState(TypedDict, total=False):
     user_query: str
     conversation_id: str
     user_id: Optional[str]
+    conversation_context: Optional[str]          # Recent dialogue history for follow-up resolution
+    relevant_memories: List[Dict[str, Any]]      # Injected persistent user preferences & facts
     query_category: str                          # DOCUMENT_QUERY, WEB_SEARCH_QUERY, COMPARISON_QUERY, etc.
     execution_plan: List[str]                    # Ordered list of planned agent steps
     selected_agents: List[str]                   # Names of agents activated for this query

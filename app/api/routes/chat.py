@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.agents.graph import run_agent_workflow, stream_agent_workflow
 from app.memory.conversation import conversation_manager
+from app.memory.extractor import memory_extractor
 
 
 router = APIRouter(prefix="/api", tags=["Multi-Agent Chat"])
@@ -65,6 +66,17 @@ def execute_chat(request: ChatRequest):
             agents_used=selected_agents,
             citations=citations
         )
+
+        # Asynchronously/safely extract durable long-term memories
+        try:
+            memory_extractor.extract_and_save(
+                user_id=request.user_id or "default_user",
+                query=request.query,
+                response=final_response,
+                conversation_id=request.conversation_id or "default_session"
+            )
+        except Exception:
+            pass
 
         return ChatResponse(
             query=request.query,

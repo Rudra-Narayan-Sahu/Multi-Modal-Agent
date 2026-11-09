@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatGPT</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React 18 & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Marked for markdown parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            chatgpt: {
+              sidebar: '#202123',
+              main: '#343541',
+              message: '#444654',
+              card: '#3E3F4B',
+              input: '#40414F',
+              border: '#4D4D4F',
+              hover: '#2A2B32',
+              text: '#ECECF1',
+              subtext: '#C5C5D2',
+              grayIcon: '#8E8EA0',
+              accent: '#10a37f'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #343541;
+      color: #ECECF1;
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #565869; border-radius: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #acacbe; }
+    
+    .prose pre {
+      background: #202123;
+      border-radius: 6px;
+      padding: 12px 14px;
+      overflow-x: auto;
+      margin: 10px 0;
+      border: 1px solid rgba(255,255,255,0.08);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem;
+    }
+    .prose code {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .prose table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9em; }
+    .prose th, .prose td { border: 1px solid #565869; padding: 6px 10px; text-align: left; }
+    .prose th { background: rgba(255, 255, 255, 0.06); font-weight: 600; }
+    .prose ul { list-style-type: disc; margin-left: 24px; margin-top: 6px; margin-bottom: 6px; }
+    .prose ol { list-style-type: decimal; margin-left: 24px; margin-top: 6px; margin-bottom: 6px; }
+    .prose p { margin-bottom: 10px; line-height: 1.6; }
+    .prose a { color: #10a37f; text-decoration: underline; }
+    .cursor-blink {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background-color: #d1d5db;
+      animation: blink 1s infinite;
+      vertical-align: middle;
+      margin-left: 2px;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+  </style>
+</head>
+<body class="bg-chatgpt-main text-chatgpt-text h-screen flex overflow-hidden select-none">
+  <div id="root" class="w-full h-full flex"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // SVG Icons matching original ChatGPT interface exactly
+    const PlusIcon = () => (
+      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 shrink-0" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+    );
+
+    const MessageIcon = () => (
+      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 shrink-0 text-chatgpt-grayIcon" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+    );
+
+    const TrashIcon = () => (
+      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-3.5 w-3.5 text-chatgpt-grayIcon hover:text-white transition" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+    );
+
+    const UserOutlineIcon = () => (
+      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 shrink-0" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+    );
+
+    const SendIcon = ({ active }) => (
+      <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class={`h-4 w-4 transition ${active ? 'text-white' : 'text-chatgpt-grayIcon/40'}`} height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    );
+
+    const SunIcon = () => (
+      <svg stroke="currentColor" fill="none" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-6 w-6 mx-auto mb-2 text-chatgpt-text" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+    );
+
+    const BoltIcon = () => (
+      <svg stroke="currentColor" fill="none" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-6 w-6 mx-auto mb-2 text-chatgpt-text" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+      </svg>
+    );
+
+    const WarningIcon = () => (
+      <svg stroke="currentColor" fill="none" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-6 w-6 mx-auto mb-2 text-chatgpt-text" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+    );
+
+    // Official ChatGPT Swirl Icon
+    const OpenAIIcon = () => (
+      <svg viewBox="0 0 41 41" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" class="text-white">
+        <path d="M37.5324 16.8745C37.9808 15.5241 38.1363 14.0974 37.9886 12.6844C37.8409 11.2713 37.3934 9.90709 36.6748 8.67978C35.9562 7.45247 34.9831 6.39327 33.8164 5.56877C32.6496 4.74427 31.3178 4.17415 29.907 3.89456C28.4962 3.61497 27.0401 3.63254 25.6358 3.94615C24.2315 4.25976 22.9135 4.86193 21.7679 5.71427C20.6224 6.56661 19.6781 7.64821 18.9961 8.88764C18.3141 10.1271 17.9107 11.4947 17.8118 12.9022C16.4828 12.9056 15.1687 13.208 13.9774 13.7844C12.786 14.3608 11.7475 15.1965 10.9464 16.2235C10.1453 17.2505 9.6022 18.4428 9.36151 19.7029C9.12082 20.963 9.18872 22.2596 9.5596 23.4871C8.21666 23.9535 7.00949 24.7448 6.03554 25.7972C5.06159 26.8496 4.34689 28.1363 3.94966 29.5534C3.55243 30.9705 3.48293 32.4816 3.74693 33.963C4.01093 35.4444 4.59196 36.8582 5.44284 38.0894C6.29372 39.3206 7.39235 40.3379 8.64947 41.0583C9.90659 41.7787 11.2917 42.1843 12.6917 42.242C14.0917 42.2997 15.4719 42.0081 16.72 41.391C17.9681 40.7739 19.0537 39.8466 19.8874 38.6853C20.4072 39.0665 20.9781 39.3804 21.5873 39.6201C22.1966 39.8598 22.8315 40.0204 23.4776 40.0984C24.1237 40.1764 24.7677 40.1702 25.3952 40.08C26.0227 39.9898 26.6208 39.8174 27.1755 39.5667C26.7271 40.9171 26.5716 42.3438 26.7193 43.7568C26.867 45.1699 27.3145 46.5341 28.0331 47.7614C28.7517 48.9887 29.7248 50.0479 30.8916 50.8724C32.0584 51.6969 33.3902 52.267 34.801 52.5466C36.2118 52.8262 37.6679 52.8087 39.0722 52.4951C40.4765 52.1815 41.7945 51.5793 42.9401 50.727C44.0856 49.8746 45.0299 48.793 45.7119 47.5536C46.3939 46.3141 46.7973 44.9465 46.8962 43.539C48.2252 43.5356 49.5393 43.2332 50.7306 42.6568C51.922 42.0804 52.9605 41.2447 53.7616 40.2177C54.5627 39.1907 55.1058 37.9984 55.3465 36.7383C55.5872 35.4782 55.5193 34.1816 55.1484 32.9541C56.4913 32.4877 57.6985 31.6964 58.6725 30.644C59.6464 29.5916 60.3611 28.3049 60.7583 26.8878C61.1556 25.4707 61.2251 23.9596 60.9611 22.4782C60.6971 20.9968 60.116 19.583 59.2652 18.3518C58.4143 17.1206 57.3156 16.1033 56.0585 15.3829C54.8014 14.6625 53.4163 14.2569 52.0163 14.1992C50.6163 14.1415 49.2361 14.4331 47.988 15.0502C46.7399 15.6673 45.6543 16.5946 44.8206 17.7559C44.3008 17.3747 43.7299 17.0608 43.1207 16.8211C42.5114 16.5814 41.8765 16.4208 41.2304 16.3428C40.5843 16.2648 39.9403 16.271 39.3128 16.3612C38.6853 16.4514 38.0872 16.6238 37.5324 16.8745Z" fill="currentColor"></path>
+      </svg>
+    );
+
+    const UserAvatar = ({ email }) => (
+      <div class="w-7 h-7 rounded-sm overflow-hidden flex items-center justify-center font-bold text-xs shrink-0 select-none bg-gradient-to-tr from-amber-700 to-amber-500 text-white shadow-inner">
+        {email ? email.charAt(0).toUpperCase() : 'R'}
+      </div>
+    );
+
+    const AssistantAvatar = () => (
+      <div class="w-7 h-7 rounded-sm bg-[#10a37f] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm select-none">
+        <OpenAIIcon />
+      </div>
+    );
+
+    // Initial screenshot-matched mock history for when user has not yet populated chats
+    const DEFAULT_HISTORY = [
+      { id: "mock_today_1", title: "New chat", section: "Today" },
+      { id: "mock_p30_1", title: "Tech & UX Trends", section: "Previous 30 Days" },
+      { id: "mock_p30_2", title: "Repas molle et rapide.", section: "Previous 30 Days" },
+      { id: "mock_p30_3", title: "Extend D-ticket to France", section: "Previous 30 Days" },
+      { id: "mock_p30_4", title: "Bubble.io App Specialist", section: "Previous 30 Days" },
+      { id: "mock_p30_5", title: "Excel Expert Assistance", section: "Previous 30 Days" },
+      { id: "mock_p30_6", title: "Designing Android Apps in Fig", section: "Previous 30 Days" },
+      { id: "mock_p30_7", title: "Formation Program Assistance.", section: "Previous 30 Days" },
+    ];
+
+    function App() {
+      const [userEmail, setUserEmail] = useState("reda.attarca@gmail.com");
+      const [userId, setUserId] = useState("default_user");
+      const [conversations, setConversations] = useState([]);
+      const [activeConvId, setActiveConvId] = useState("");
+      const [activeConvTitle, setActiveConvTitle] = useState("");
+      const [messages, setMessages] = useState([]);
+      const [inputQuery, setInputQuery] = useState("");
+      const [isLoading, setIsLoading] = useState(false);
+      const [showModal, setShowModal] = useState(false);
+      const [activeModalTab, setActiveModalTab] = useState("memory");
+      const [memories, setMemories] = useState([]);
+      const [newMemContent, setNewMemContent] = useState("");
+      const [newMemCategory, setNewMemCategory] = useState("explicit_notes");
+      const [newMemImp, setNewMemImp] = useState(3);
+      const [agentStatus, setAgentStatus] = useState(null);
+      const messagesEndRef = useRef(null);
+
+      // Load conversations from DB
+      const loadConversations = async () => {
+        try {
+          const res = await fetch(`/api/conversations?user_id=${userId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.length > 0) {
+              setConversations(data);
+            } else {
+              setConversations(DEFAULT_HISTORY);
+            }
+          } else {
+            setConversations(DEFAULT_HISTORY);
+          }
+        } catch (e) {
+          setConversations(DEFAULT_HISTORY);
+        }
+      };
+
+      // Load messages for active conversation
+      const loadMessages = async (cid) => {
+        if (!cid || cid.startsWith("mock_")) {
+          setMessages([]);
+          return;
+        }
+        try {
+          const res = await fetch(`/api/conversations/${cid}?user_id=${userId}`);
+          if (res.ok) {
+            const data = await res.json();
+            setMessages(data.messages || []);
+          } else {
+            setMessages([]);
+          }
+        } catch (e) {
+          setMessages([]);
+        }
+      };
+
+      // Load long-term memories
+      const loadMemories = async () => {
+        try {
+          const res = await fetch(`/api/memory?user_id=${userId}`);
+          if (res.ok) {
+            const data = await res.json();
+            setMemories(data);
+          }
+        } catch (e) {
+          console.error("Failed to load memories", e);
+        }
+      };
+
+      // Load multi-agent system status
+      const loadAgentStatus = async () => {
+        try {
+          const res = await fetch(`/api/agents/status`);
+          if (res.ok) {
+            const data = await res.json();
+            setAgentStatus(data);
+          }
+        } catch (e) {}
+      };
+
+      useEffect(() => {
+        loadConversations();
+        loadMemories();
+        loadAgentStatus();
+      }, [userId]);
+
+      useEffect(() => {
+        if (activeConvId) {
+          loadMessages(activeConvId);
+        } else {
+          setMessages([]);
+        }
+      }, [activeConvId]);
+
+      useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, [messages, isLoading]);
+
+      const handleNewChat = () => {
+        const newId = `session_${Math.random().toString(36).substring(2, 10)}`;
+        setActiveConvId(newId);
+        setActiveConvTitle("New chat");
+        setMessages([]);
+      };
+
+      const selectConversation = (item) => {
+        setActiveConvId(item.id);
+        setActiveConvTitle(item.title);
+        if (item.id.startsWith("mock_")) {
+          setMessages([]);
+        } else {
+          loadMessages(item.id);
+        }
+      };
+
+      const handleDeleteChat = async (e, cid) => {
+        e.stopPropagation();
+        if (cid.startsWith("mock_")) {
+          setConversations(prev => prev.filter(c => c.id !== cid));
+          if (activeConvId === cid) handleNewChat();
+          return;
+        }
+        try {
+          await fetch(`/api/conversations/${cid}?user_id=${userId}`, { method: "DELETE" });
+          await loadConversations();
+          if (activeConvId === cid) handleNewChat();
+        } catch (e) {
+          console.error("Failed to delete", e);
+        }
+      };
+
+      const handleSend = async (customText) => {
+        const text = (typeof customText === 'string' ? customText : inputQuery).trim();
+        if (!text || isLoading) return;
+
+        setInputQuery("");
+        const cid = (!activeConvId || activeConvId.startsWith("mock_")) 
+          ? `session_${Math.random().toString(36).substring(2, 10)}` 
+          : activeConvId;
+        
+        if (activeConvId !== cid) {
+          setActiveConvId(cid);
+          setActiveConvTitle(text.substring(0, 24));
+        }
+
+        // Optimistically add user query
+        const optimisticUserMsg = { role: "user", content: text, created_at: new Date().toISOString() };
+        setMessages(prev => [...prev, optimisticUserMsg]);
+        setIsLoading(true);
+
+        try {
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              query: text,
+              conversation_id: cid,
+              user_id: userId
+            })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            const asstMsg = {
+              role: "assistant",
+              content: data.final_response,
+              created_at: new Date().toISOString(),
+              metadata: {
+                category: data.query_category,
+                agents_used: data.selected_agents,
+                citations: data.source_references
+              }
+            };
+            setMessages(prev => [...prev, asstMsg]);
+            loadConversations();
+            loadMemories();
+          } else {
+            const errData = await res.json().catch(() => ({}));
+            setMessages(prev => [...prev, {
+              role: "assistant",
+              content: `Error: ${errData.detail || "Unable to process request. Please try again."}`
+            }]);
+          }
+        } catch (err) {
+          setMessages(prev => [...prev, {
+            role: "assistant",
+            content: "Network error communicating with LangGraph multi-agent server."
+          }]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      const handleSaveMemory = async (e) => {
+        e.preventDefault();
+        if (!newMemContent.trim()) return;
+        try {
+          const res = await fetch(`/api/memory?user_id=${userId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              content: newMemContent.trim(),
+              category: newMemCategory,
+              importance: parseInt(newMemImp)
+            })
+          });
+          if (res.ok) {
+            setNewMemContent("");
+            loadMemories();
+          }
+        } catch (e) {
+          console.error("Failed to save memory", e);
+        }
+      };
+
+      const handleDeleteMemory = async (mid) => {
+        try {
+          await fetch(`/api/memory/${mid}?user_id=${userId}`, { method: "DELETE" });
+          loadMemories();
+        } catch (e) {}
+      };
+
+      // Split chats into Today and Previous 30 Days
+      const todayChats = conversations.filter(c => c.section === "Today" || (!c.section && conversations.indexOf(c) < 1));
+      const previousChats = conversations.filter(c => c.section === "Previous 30 Days" || (!c.section && conversations.indexOf(c) >= 1));
+
+      return (
+        <div class="flex h-full w-full bg-chatgpt-main overflow-hidden text-sm">
+          {/* ======================================================== */}
+          {/* LEFT SIDEBAR (260px, exact #202123 background)          */}
+          {/* ======================================================== */}
+          <div class="w-[260px] bg-chatgpt-sidebar h-full flex flex-col justify-between shrink-0 select-none">
+            {/* Top Section */}
+            <div class="p-2 flex flex-col h-[calc(100%-116px)]">
+              {/* + New chat button */}
+              <button
+                onClick={handleNewChat}
+                class="flex items-center gap-3 w-full border border-white/20 rounded-md px-3 py-2.5 text-white hover:bg-chatgpt-hover transition text-sm mb-3"
+              >
+                <PlusIcon />
+                <span class="text-sm font-normal">New chat</span>
+              </button>
+
+              {/* Chat History List */}
+              <div class="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
+                {/* Today Section */}
+                <div>
+                  <div class="text-[11px] font-medium text-chatgpt-grayIcon px-3 py-1.5 tracking-wide">Today</div>
+                  <div class="space-y-0.5">
+                    {todayChats.length > 0 ? (
+                      todayChats.map(conv => (
+                        <div
+                          key={conv.id}
+                          onClick={() => selectConversation(conv)}
+                          class={`group flex items-center justify-between px-3 py-2.5 rounded-md cursor-pointer transition ${activeConvId === conv.id ? 'bg-[#343541] text-white' : 'text-chatgpt-subtext hover:bg-chatgpt-hover'}`}
+                        >
+                          <div class="flex items-center gap-3 truncate">
+                            <MessageIcon />
+                            <span class="truncate text-xs font-normal">{conv.title}</span>
+                          </div>
+                          <button
+                            onClick={(e) => handleDeleteChat(e, conv.id)}
+                            class="opacity-0 group-hover:opacity-100 hover:text-white transition p-0.5"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div
+                        onClick={handleNewChat}
+                        class="flex items-center gap-3 px-3 py-2.5 rounded-md text-chatgpt-subtext hover:bg-chatgpt-hover cursor-pointer"
+                      >
+                        <MessageIcon />
+                        <span class="text-xs">New chat</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Previous 30 Days Section */}
+                <div>
+                  <div class="text-[11px] font-medium text-chatgpt-grayIcon px-3 py-1.5 tracking-wide">Previous 30 Days</div>
+                  <div class="space-y-0.5">
+                    {previousChats.map(conv => (
+                      <div
+                        key={conv.id}
+                        onClick={() => selectConversation(conv)}
+                        class={`group flex items-center justify-between px-3 py-2.5 rounded-md cursor-pointer transition ${activeConvId === conv.id ? 'bg-[#343541] text-white' : 'text-chatgpt-subtext hover:bg-chatgpt-hover'}`}
+                      >
+                        <div class="flex items-center gap-3 truncate">
+                          <MessageIcon />
+                          <span class="truncate text-xs font-normal">{conv.title}</span>
+                        </div>
+                        <button
+                          onClick={(e) => handleDeleteChat(e, conv.id)}
+                          class="opacity-0 group-hover:opacity-100 hover:text-white transition p-0.5"
+                        >
+                          <TrashIcon />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Controls / User Profile Bar */}
+            <div class="border-t border-white/20 p-2 space-y-1">
+              {/* Upgrade to Plus with gold NEW badge */}
+              <div
+                onClick={() => { setActiveModalTab("memory"); setShowModal(true); }}
+                class="flex items-center justify-between px-3 py-2.5 text-xs text-chatgpt-subtext hover:bg-chatgpt-hover rounded-md transition cursor-pointer"
+              >
+                <div class="flex items-center gap-3">
+                  <UserOutlineIcon />
+                  <span class="text-sm font-normal text-white">Upgrade to Plus</span>
+                </div>
+                <span class="bg-[#FAE69E] text-black font-bold text-[10px] px-1.5 py-0.5 rounded tracking-wider shadow-sm">
+                  NEW
+                </span>
+              </div>
+
+              {/* User Profile Row: Avatar + Email + 3-dots */}
+              <div
+                onClick={() => { setActiveModalTab("user"); setShowModal(true); }}
+                class="flex items-center justify-between px-3 py-2 text-xs text-chatgpt-subtext hover:bg-chatgpt-hover rounded-md transition cursor-pointer"
+              >
+                <div class="flex items-center gap-3 truncate">
+                  <UserAvatar email={userEmail} />
+                  <span class="truncate font-medium text-white text-xs">{userEmail}</span>
+                </div>
+                <span class="text-chatgpt-grayIcon hover:text-white text-sm font-bold tracking-widest pl-1">•••</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ======================================================== */}
+          {/* MAIN CHAT AREA (exact #343541 background)                */}
+          {/* ======================================================== */}
+          <div class="flex-1 flex flex-col h-full relative overflow-hidden bg-chatgpt-main">
+            {/* Conversation Flow or Empty Home Screen */}
+            <div class="flex-1 overflow-y-auto custom-scrollbar flex flex-col justify-between">
+              {messages.length === 0 ? (
+                /* EMPTY STATE: Matches the user-provided screenshot pixel-for-pixel */
+                <div class="max-w-3xl w-full mx-auto px-4 pt-16 pb-28 flex flex-col items-center justify-center my-auto">
+                  {/* ChatGPT Center Title */}
+                  <h1 class="text-[38px] font-semibold text-white mb-10 tracking-tight select-none">
+                    ChatGPT
+                  </h1>
+
+                  {/* 3 Columns: Examples, Capabilities, Limitations */}
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 w-full text-center">
+                    {/* 1. Examples Column */}
+                    <div class="flex flex-col gap-3.5">
+                      <div class="flex flex-col items-center justify-center mb-1">
+                        <SunIcon />
+                        <h2 class="text-lg font-normal text-white">Examples</h2>
+                      </div>
+                      <button
+                        onClick={() => handleSend("Explain quantum computing in simple terms")}
+                        class="bg-chatgpt-card hover:bg-chatgpt-sidebar p-3 rounded-md text-xs text-gray-200 transition shadow-sm select-none min-h-[64px] flex items-center justify-center border border-transparent hover:border-white/5 active:scale-[0.98]"
+                      >
+                        "Explain quantum computing in simple terms" →
+                      </button>
+                      <button
+                        onClick={() => handleSend("Got any creative ideas for a 10 year old's birthday?")}
+                        class="bg-chatgpt-card hover:bg-chatgpt-sidebar p-3 rounded-md text-xs text-gray-200 transition shadow-sm select-none min-h-[64px] flex items-center justify-center border border-transparent hover:border-white/5 active:scale-[0.98]"
+                      >
+                        "Got any creative ideas for a 10 year old's birthday?" →
+                      </button>
+                      <button
+                        onClick={() => handleSend("How do I make an HTTP request in Javascript?")}
+                        class="bg-chatgpt-card hover:bg-chatgpt-sidebar p-3 rounded-md text-xs text-gray-200 transition shadow-sm select-none min-h-[64px] flex items-center justify-center border border-transparent hover:border-white/5 active:scale-[0.98]"
+                      >
+                        "How do I make an HTTP request in Javascript?" →
+                      </button>
+                    </div>
+
+                    {/* 2. Capabilities Column */}
+                    <div class="flex flex-col gap-3.5">
+                      <div class="flex flex-col items-center justify-center mb-1">
+                        <BoltIcon />
+                        <h2 class="text-lg font-normal text-white">Capabilities</h2>
+                      </div>
+                      <div class="bg-chatgpt-card p-3 rounded-md text-xs text-gray-200 shadow-sm select-none min-h-[64px] flex items-center justify-center">
+                        Remembers what user said earlier in the conversation
+                      </div>
+                      <div class="bg-chatgpt-card p-3 rounded-md text-xs text-gray-200 shadow-sm select-none min-h-[64px] flex items-center justify-center">
+                        Allows user to provide follow-up corrections
+                      </div>
+                      <div class="bg-chatgpt-card p-3 rounded-md text-xs text-gray-200 shadow-sm select-none min-h-[64px] flex items-center justify-center">
+                        Trained to decline inappropriate requests
+                      </div>
+                    </div>
+
+                    {/* 3. Limitations Column */}
+                    <div class="flex flex-col gap-3.5">
+                      <div class="flex flex-col items-center justify-center mb-1">
+                        <WarningIcon />
+                        <h2 class="text-lg font-normal text-white">Limitations</h2>
+                      </div>
+                      <div class="bg-chatgpt-card p-3 rounded-md text-xs text-gray-200 shadow-sm select-none min-h-[64px] flex items-center justify-center">
+                        May occasionally generate incorrect information
+                      </div>
+                      <div class="bg-chatgpt-card p-3 rounded-md text-xs text-gray-200 shadow-sm select-none min-h-[64px] flex items-center justify-center">
+                        May occasionally produce harmful instructions or biased content
+                      </div>
+                      <div class="bg-chatgpt-card p-3 rounded-md text-xs text-gray-200 shadow-sm select-none min-h-[64px] flex items-center justify-center">
+                        Limited knowledge of world and events after 2021
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* ACTIVE CHAT STREAM */
+                <div class="w-full flex-1 pb-32">
+                  {messages.map((m, idx) => {
+                    const isAssistant = m.role === 'assistant';
+                    return (
+                      <div
+                        key={idx}
+                        class={`w-full py-6 px-4 md:px-0 flex justify-center border-b border-black/10 ${isAssistant ? 'bg-chatgpt-message' : 'bg-chatgpt-main'}`}
+                      >
+                        <div class="max-w-3xl w-full flex gap-4 md:gap-6">
+                          {isAssistant ? <AssistantAvatar /> : <UserAvatar email={userEmail} />}
+                          <div class="flex-1 overflow-hidden space-y-2">
+                            {/* Rendered content */}
+                            <div
+                              class="prose prose-invert max-w-none text-chatgpt-text leading-relaxed text-[15px]"
+                              dangerouslySetInnerHTML={{ __html: marked.parse(m.content || '') }}
+                            />
+
+                            {/* Multi-Agent Attribution Badges */}
+                            {isAssistant && m.metadata && (
+                              <div class="pt-2 flex flex-wrap items-center gap-1.5 border-t border-white/5 mt-3">
+                                {m.metadata.category && (
+                                  <span class="text-[10px] bg-sky-950/70 text-sky-300 border border-sky-800/50 px-2 py-0.5 rounded-full font-medium">
+                                    Intent: {m.metadata.category}
+                                  </span>
+                                )}
+                                {m.metadata.agents_used && m.metadata.agents_used.map(ag => (
+                                  <span key={ag} class="text-[10px] bg-emerald-950/70 text-emerald-300 border border-emerald-800/50 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
+                                    <span>🤖</span> {ag}
+                                  </span>
+                                ))}
+                                {m.metadata.citations && m.metadata.citations.length > 0 && (
+                                  <span class="text-[10px] bg-purple-950/70 text-purple-300 border border-purple-800/50 px-2 py-0.5 rounded-full font-medium">
+                                    📚 {m.metadata.citations.length} Sources Verified
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Citations List if available */}
+                            {isAssistant && m.metadata && m.metadata.citations && m.metadata.citations.length > 0 && (
+                              <div class="mt-2 text-xs text-chatgpt-grayIcon space-y-1 bg-black/20 p-2.5 rounded">
+                                <div class="font-semibold text-gray-300 text-[11px] mb-1">Sources & References:</div>
+                                {m.metadata.citations.map((c, i) => (
+                                  <div key={i} class="truncate">
+                                    <span class="text-emerald-400 font-mono font-medium">[{i+1}]</span>{' '}
+                                    <a href={c.url} target="_blank" rel="noopener noreferrer" class="hover:underline text-chatgpt-text">
+                                      {c.title || c.url}
+                                    </a>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {isLoading && (
+                    <div class="w-full py-6 px-4 md:px-0 flex justify-center bg-chatgpt-message border-b border-black/10">
+                      <div class="max-w-3xl w-full flex gap-4 md:gap-6 items-center">
+                        <AssistantAvatar />
+                        <div class="flex items-center gap-2 text-xs text-chatgpt-grayIcon">
+                          <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                          <span>LangGraph Multi-Agent Assistant is generating response...</span>
+                          <span class="cursor-blink"></span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </div>
+
+            {/* ======================================================== */}
+            {/* FLOATING BOTTOM INPUT BAR                                */}
+            {/* ======================================================== */}
+            <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-chatgpt-main via-chatgpt-main to-transparent pt-6 pb-4 px-4">
+              <div class="max-w-3xl mx-auto">
+                <form
+                  onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+                  class="relative flex items-center bg-chatgpt-input border border-black/10 dark:border-gray-900/50 shadow-[0_0_15px_rgba(0,0,0,0.15)] rounded-xl overflow-hidden focus-within:border-chatgpt-grayIcon transition"
+                >
+                  <input
+                    type="text"
+                    value={inputQuery}
+                    onChange={(e) => setInputQuery(e.target.value)}
+                    placeholder="Send a message."
+                    class="w-full bg-transparent px-4 py-3.5 pr-12 text-sm text-white placeholder-chatgpt-grayIcon focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!inputQuery.trim() || isLoading}
+                    class="absolute right-3 p-1.5 rounded-md hover:bg-black/20 disabled:opacity-30 disabled:hover:bg-transparent transition cursor-pointer"
+                  >
+                    <SendIcon active={!!inputQuery.trim()} />
+                  </button>
+                </form>
+
+                {/* Footer disclaimer matching screenshot */}
+                <div class="text-[11px] text-center text-chatgpt-grayIcon mt-2 select-none">
+                  Free Research Preview. ChatGPT may produce inaccurate information about people, places, or facts.{' '}
+                  <span
+                    onClick={() => { setActiveModalTab("info"); setShowModal(true); }}
+                    class="underline cursor-pointer hover:text-white"
+                  >
+                    ChatGPT May 12 Version
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ======================================================== */}
+          {/* PLUS / MEMORY / AGENT SETTINGS MODAL                     */}
+          {/* ======================================================== */}
+          {showModal && (
+            <div class="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+              <div class="bg-chatgpt-sidebar border border-white/10 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden text-chatgpt-text">
+                {/* Modal Header */}
+                <div class="p-4 border-b border-white/10 flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-md bg-[#10a37f] text-white flex items-center justify-center">
+                      <OpenAIIcon />
+                    </div>
+                    <div>
+                      <h3 class="font-semibold text-sm text-white">ChatGPT Multi-Agent System</h3>
+                      <div class="text-[11px] text-chatgpt-grayIcon">LangGraph Orchestration & Long-Term Memory</div>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowModal(false)} class="text-chatgpt-grayIcon hover:text-white text-lg px-2">✕</button>
+                </div>
+
+                {/* Modal Navigation Tabs */}
+                <div class="flex border-b border-white/10 bg-black/20 px-4">
+                  <button
+                    onClick={() => setActiveModalTab("memory")}
+                    class={`py-2.5 px-3 text-xs font-medium border-b-2 transition ${activeModalTab === "memory" ? "border-emerald-500 text-white" : "border-transparent text-chatgpt-grayIcon hover:text-white"}`}
+                  >
+                    🧠 Long-Term Memory ({memories.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveModalTab("agents")}
+                    class={`py-2.5 px-3 text-xs font-medium border-b-2 transition ${activeModalTab === "agents" ? "border-emerald-500 text-white" : "border-transparent text-chatgpt-grayIcon hover:text-white"}`}
+                  >
+                    🤖 Multi-Agent Graph
+                  </button>
+                  <button
+                    onClick={() => setActiveModalTab("user")}
+                    class={`py-2.5 px-3 text-xs font-medium border-b-2 transition ${activeModalTab === "user" ? "border-emerald-500 text-white" : "border-transparent text-chatgpt-grayIcon hover:text-white"}`}
+                  >
+                    ⚙️ User & Profile
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div class="p-5 overflow-y-auto flex-1 space-y-4 custom-scrollbar">
+                  {/* TAB 1: Long-Term Memory */}
+                  {activeModalTab === "memory" && (
+                    <div class="space-y-4">
+                      {/* Explicit Memory Form */}
+                      <form onSubmit={handleSaveMemory} class="bg-white/5 border border-white/10 rounded-lg p-3 space-y-3">
+                        <div class="font-semibold text-xs text-white">Save Explicit Memory</div>
+                        <div class="grid grid-cols-2 gap-2">
+                          <div>
+                            <label class="text-[10px] text-chatgpt-grayIcon">Category</label>
+                            <select
+                              value={newMemCategory}
+                              onChange={(e) => setNewMemCategory(e.target.value)}
+                              class="w-full bg-chatgpt-input border border-white/10 rounded px-2 py-1.5 text-xs text-white mt-0.5 focus:outline-none"
+                            >
+                              <option value="user_preferences">User Preferences</option>
+                              <option value="user_context">User Context</option>
+                              <option value="project_context">Project Context</option>
+                              <option value="research_memory">Research Memory</option>
+                              <option value="explicit_notes">Explicit Notes</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label class="text-[10px] text-chatgpt-grayIcon">Importance (1-5)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="5"
+                              value={newMemImp}
+                              onChange={(e) => setNewMemImp(e.target.value)}
+                              class="w-full bg-chatgpt-input border border-white/10 rounded px-2 py-1.5 text-xs text-white mt-0.5 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label class="text-[10px] text-chatgpt-grayIcon">Content (No passwords or API keys)</label>
+                          <textarea
+                            rows="2"
+                            placeholder="e.g. User prefers concise answers with code snippets in Python."
+                            value={newMemContent}
+                            onChange={(e) => setNewMemContent(e.target.value)}
+                            class="w-full bg-chatgpt-input border border-white/10 rounded px-2.5 py-1.5 text-xs text-white mt-0.5 focus:outline-none focus:border-white/30"
+                          />
+                        </div>
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3.5 py-1.5 rounded font-medium transition">
+                          + Save Memory
+                        </button>
+                      </form>
+
+                      {/* Stored Memories List */}
+                      <div class="space-y-2">
+                        <div class="font-semibold text-xs text-chatgpt-subtext">Active Long-Term Memories ({memories.length})</div>
+                        {memories.map(mem => (
+                          <div key={mem.id} class="bg-white/5 border border-white/10 rounded-lg p-3 flex items-start justify-between">
+                            <div class="space-y-1 pr-2">
+                              <div class="flex items-center gap-2">
+                                <span class="text-[10px] bg-amber-950/80 text-amber-300 border border-amber-800/80 px-2 py-0.5 rounded font-medium">
+                                  {mem.category.replace('_', ' ').toUpperCase()}
+                                </span>
+                                <span class="text-[10px] text-chatgpt-grayIcon">Importance: {mem.importance}/5</span>
+                              </div>
+                              <div class="text-xs text-chatgpt-text">{mem.content}</div>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteMemory(mem.id)}
+                              class="text-chatgpt-grayIcon hover:text-rose-400 text-xs px-2 py-1 rounded transition"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                        {memories.length === 0 && (
+                          <div class="text-xs text-chatgpt-grayIcon italic p-4 text-center border border-dashed border-white/10 rounded-lg">
+                            No persistent memories yet. The system automatically extracts key preferences, or you can add them above.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: Multi-Agent System */}
+                  {activeModalTab === "agents" && (
+                    <div class="space-y-3 text-xs">
+                      <div class="p-3 bg-white/5 border border-white/10 rounded-lg space-y-2">
+                        <div class="font-semibold text-white">LangGraph Orchestration Pipeline</div>
+                        <p class="text-chatgpt-grayIcon text-[11px] leading-relaxed">
+                          Incoming queries are routed by the Supervisor node to specialized agents via conditional StateGraph routing and merged into shared state.
+                        </p>
+                      </div>
+                      <div class="grid grid-cols-2 gap-2">
+                        <div class="p-3 bg-white/5 border border-white/10 rounded-lg">
+                          <div class="font-semibold text-white">1. Supervisor Agent</div>
+                          <div class="text-[11px] text-chatgpt-grayIcon">Intent detection & dynamic parallel dispatch</div>
+                        </div>
+                        <div class="p-3 bg-white/5 border border-white/10 rounded-lg">
+                          <div class="font-semibold text-white">2. RAG Agent</div>
+                          <div class="text-[11px] text-chatgpt-grayIcon">Qdrant Cloud vector search + FlashRank reranker</div>
+                        </div>
+                        <div class="p-3 bg-white/5 border border-white/10 rounded-lg">
+                          <div class="font-semibold text-white">3. Web Search Agent</div>
+                          <div class="text-[11px] text-chatgpt-grayIcon">Tavily Search API + DuckDuckGo fallback</div>
+                        </div>
+                        <div class="p-3 bg-white/5 border border-white/10 rounded-lg">
+                          <div class="font-semibold text-white">4. Research Agent</div>
+                          <div class="text-[11px] text-chatgpt-grayIcon">Evidence synthesis & multi-source fact cross-check</div>
+                        </div>
+                        <div class="p-3 bg-white/5 border border-white/10 rounded-lg">
+                          <div class="font-semibold text-white">5. Tool Agent</div>
+                          <div class="text-[11px] text-chatgpt-grayIcon">Calculator, Python executor & date tools</div>
+                        </div>
+                        <div class="p-3 bg-white/5 border border-white/10 rounded-lg">
+                          <div class="font-semibold text-white">6. Response Agent</div>
+                          <div class="text-[11px] text-chatgpt-grayIcon">Grounded synthesis with verified citations</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: User & Profile */}
+                  {activeModalTab === "user" && (
+                    <div class="space-y-4 text-xs">
+                      <div class="p-3 bg-white/5 border border-white/10 rounded-lg space-y-3">
+                        <div class="font-semibold text-white">User Identification & Isolation</div>
+                        <div>
+                          <label class="text-[10px] text-chatgpt-grayIcon">Display Email (matching screenshot)</label>
+                          <input
+                            type="text"
+                            value={userEmail}
+                            onChange={(e) => setUserEmail(e.target.value)}
+                            class="w-full bg-chatgpt-input border border-white/10 rounded px-2.5 py-1.5 text-xs text-white mt-1"
+                          />
+                        </div>
+                        <div>
+                          <label class="text-[10px] text-chatgpt-grayIcon">Database User ID (Isolation key)</label>
+                          <input
+                            type="text"
+                            value={userId}
+                            onChange={(e) => setUserId(e.target.value)}
+                            class="w-full bg-chatgpt-input border border-white/10 rounded px-2.5 py-1.5 text-xs text-white mt-1"
+                          />
+                        </div>
+                      </div>
+                      <div class="p-3 bg-white/5 border border-white/10 rounded-lg space-y-2">
+                        <div class="font-semibold text-white">Data Retention & Control</div>
+                        <p class="text-chatgpt-grayIcon text-[11px]">
+                          All messages and memories are stored locally in SQLite (`processed_data/memory.db`) or PostgreSQL (`DATABASE_URL`). You can delete individual memories or chats anytime.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,6 +1,8 @@
 import unittest
+import uuid
 from unittest.mock import patch
-from app.api.server import root, health_check
+from fastapi.responses import FileResponse
+from app.api.server import root, api_info, health_check
 from app.api.routes.agents import get_agents_status, get_conversation_history, delete_conversation
 from app.api.routes.chat import execute_chat, ChatRequest
 from app.memory.conversation import conversation_manager
@@ -8,14 +10,21 @@ from app.memory.conversation import conversation_manager
 
 class TestMultiAgentAPI(unittest.TestCase):
     def setUp(self):
-        self.conv_id = "test_api_session_alpha"
-        self.user_id = "test_user_alpha"
+        uid = uuid.uuid4().hex[:8]
+        self.conv_id = f"test_api_session_{uid}"
+        self.user_id = f"test_user_{uid}"
 
     def test_root_endpoint(self):
-        data = root()
-        self.assertEqual(data["version"], "2.0.0")
-        self.assertEqual(data["status"], "online")
-        self.assertIn("multi_agent_chat", data["endpoints"])
+        resp = root()
+        if isinstance(resp, FileResponse):
+            self.assertTrue(resp.path.endswith("index.html"))
+        else:
+            self.assertEqual(resp["version"], "2.1.0")
+
+        info = api_info()
+        self.assertEqual(info["version"], "2.1.0")
+        self.assertEqual(info["status"], "online")
+        self.assertIn("multi_agent_chat", info["endpoints"])
 
     def test_agents_status_endpoint(self):
         data = get_agents_status()
@@ -29,8 +38,10 @@ class TestMultiAgentAPI(unittest.TestCase):
         self.assertIn("tool_agent", names)
         self.assertIn("response_agent", names)
 
+    @patch("app.api.routes.chat.memory_extractor.extract_and_save")
     @patch("app.api.routes.chat.run_agent_workflow")
-    def test_chat_and_conversation_lifecycle(self, mock_workflow):
+    def test_chat_and_conversation_lifecycle(self, mock_workflow, mock_extract):
+        mock_extract.return_value = []
         mock_workflow.return_value = {
             "user_query": "What are vector embeddings?",
             "conversation_id": self.conv_id,

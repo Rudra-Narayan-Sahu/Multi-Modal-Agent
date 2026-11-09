@@ -69,10 +69,21 @@ class SupervisorAgent:
                     }]
                 }
 
-            # LLM-based Planning
+            # LLM-based Planning with short-term context & long-term memory
+            user_prompt_parts = []
+            if state.get("conversation_context"):
+                user_prompt_parts.append(f"Recent Conversation History (Short-Term Context):\n{state['conversation_context']}")
+            if state.get("relevant_memories"):
+                from app.memory.retriever import memory_retriever
+                mem_text = memory_retriever.format_memories_prompt(state["relevant_memories"])
+                if mem_text:
+                    user_prompt_parts.append(mem_text)
+            user_prompt_parts.append(f"Current User Query: {query}")
+            full_user_prompt = "\n\n".join(user_prompt_parts)
+
             plan_data = agent_llm.call_json([
                 {"role": "system", "content": SUPERVISOR_SYSTEM_PROMPT},
-                {"role": "user", "content": f"User Query: {query}"}
+                {"role": "user", "content": full_user_prompt}
             ])
 
             category = plan_data.get("category", "DOCUMENT_QUERY")
