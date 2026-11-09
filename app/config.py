@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings:
-    # --- EMBEDDINGS (GEMINI & HUGGINGFACE) ---
+    # --- EMBEDDINGS (GEMINI & HUGGINGFACE & LOCAL) ---
+    EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     HF_TOKEN = os.getenv("HF_TOKEN")
 
@@ -19,6 +20,7 @@ class Settings:
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
     GROQ_FALLBACK_API_KEY = os.getenv("GROQ_FALLBACK_API_KEY")
+    GROQ_FALLBACK_MODELS = ["openai/gpt-oss-20b", "qwen/qwen3.6-27b", "qwen/qwen3.8-27b"]
 
     # --- LLM GATEWAY (PORTKEY) ---
     PORTKEY_API_KEY = os.getenv("PORTKEY_API_KEY")
