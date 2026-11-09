@@ -10,14 +10,14 @@ class Settings:
     HF_TOKEN = os.getenv("HF_TOKEN")
 
     # --- VECTOR DB (QDRANT) ---
-    QDRANT_URL = os.getenv("QDRANT_CLUSTER_ENDPOINT")
+    QDRANT_URL = os.getenv("QDRANT_URL") or os.getenv("QDRANT_CLUSTER_ENDPOINT")
     QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
     QDRANT_COLLECTION = "enterprise_rag"
     QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME", QDRANT_COLLECTION)
 
     # --- REASONING ENGINE (GROQ) ---
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-    GROQ_MODEL = "llama-3.3-70b-versatile"
+    GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
     GROQ_FALLBACK_API_KEY = os.getenv("GROQ_FALLBACK_API_KEY")
 
     # --- LLM GATEWAY (PORTKEY) ---

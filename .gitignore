@@ -97,6 +97,11 @@ dmypy.json
 *.db
 *.sqlite
 
+# Local data & caches
+local_qdrant/
+processed_data/
+*.log
+
 # OS
 Thumbs.db
 .DS_Store

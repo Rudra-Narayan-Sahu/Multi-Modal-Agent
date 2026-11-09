@@ -1,55 +1,63 @@
 import logfire
+from typing import List, Dict, Any, Optional
 from qdrant_client import QdrantClient
 from app.config import settings
-from app.services.retrieval.embedding import embed_query
+from app.services.retrieval.pipeline import AdvancedRetriever, RetrievalConfig
 
+# Singleton default retriever instance
 client = QdrantClient(
     url=settings.QDRANT_URL,
     api_key=settings.QDRANT_API_KEY,
     prefer_grpc=True,
+    timeout=10,
 )
+_default_pipeline = AdvancedRetriever(client=client)
 
 
-def retrieve_documents(query: str, top_k: int = 5) -> list[dict]:
+def retrieve_documents(
+    query: str,
+    top_k: int = 5,
+    search_type: str = "hybrid",
+    enable_reranker: bool = True,
+    enable_mmr: bool = False,
+    score_threshold: Optional[float] = None,
+    filters: Optional[Dict[str, Any]] = None
+) -> List[Dict[str, Any]]:
     """
-    Retrieve the top relevant documents from Qdrant for a user query.
+    Retrieve top relevant documents using the Advanced RAG Pipeline
+    (Dense + BM25 Hybrid, Cross-Encoder Reranking, Metadata Filters).
     """
-    try:
-        query_vector = embed_query(query)
-        results = client.query_points(
-            collection_name=settings.QDRANT_COLLECTION_NAME,
-            query=query_vector,
-            limit=top_k,
-            with_payload=True,
-        )
-
-        documents = []
-        for point in getattr(results, "points", []):
-            payload = point.payload or {}
-            documents.append(
-                {
-                    "id": point.id,
-                    "score": point.score,
-                    "text": payload.get("text"),
-                    "file_name": payload.get("file_name"),
-                    "source_type": payload.get("source_type"),
-                    "source_name": payload.get("source_name"),
-                    "local_path": payload.get("local_path"),
-                }
-            )
-        return documents
-    except Exception as e:
-        logfire.error(f"Failed to retrieve documents: {e}")
-        return []
+    config = RetrievalConfig(
+        search_type=search_type,  # "dense", "sparse", or "hybrid"
+        top_k=top_k,
+        enable_reranker=enable_reranker,
+        enable_mmr=enable_mmr,
+        score_threshold=score_threshold,
+        filters=filters,
+    )
+    return _default_pipeline.retrieve(query=query, config=config)
 
 
-def retrieve_context(query: str, top_k: int = 5) -> str:
+def retrieve_context(
+    query: str,
+    top_k: int = 5,
+    include_citations: bool = False,
+    search_type: str = "hybrid",
+    enable_reranker: bool = True,
+    filters: Optional[Dict[str, Any]] = None
+) -> str:
     """
     Retrieve and join the most relevant document chunks into a single context string.
+    Optionally appends document citations and provenance metadata.
     """
-    documents = retrieve_documents(query, top_k=top_k)
-    context_parts = []
-    for doc in documents:
-        if doc.get("text"):
-            context_parts.append(doc["text"])
-    return "\n\n".join(context_parts)
+    config = RetrievalConfig(
+        search_type=search_type,
+        top_k=top_k,
+        enable_reranker=enable_reranker,
+        filters=filters,
+    )
+    result = _default_pipeline.retrieve_context_with_citations(query=query, config=config)
+    
+    if include_citations:
+        return f"{result['context']}\n\n{result['citations']}"
+    return result["context"]

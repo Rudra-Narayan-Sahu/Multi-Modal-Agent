@@ -12,7 +12,10 @@ from app.ingestion.loaders.pdf import parse_pdf
 from app.ingestion.loaders.office import parse_office
 from app.ingestion.chunking.splitter import chunk_text
 
-logfire.configure(service_name="Ingestion Processor")
+try:
+    logfire.configure(service_name="Ingestion Processor", send_to_logfire="if-token-present")
+except Exception:
+    pass
 PROCESSOR_DIR="processed_data"
 client=QdrantClient(
     url=settings.QDRANT_URL,
@@ -71,6 +74,9 @@ def process_file(file_path:str,file_name:str,source_type:str,source_name:str)->N
         if not chunks:
             logfire.warning(f"No valid chunks from {file_name}. Skipping.")
             return
+        
+        # Clean any surrogate characters from extraction
+        chunks = [c.encode("utf-8", "ignore").decode("utf-8") for c in chunks]
         
         data={"text":text}
         saved_file_path=save_data_locally(data,source_type,source_name)
