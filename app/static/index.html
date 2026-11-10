@@ -205,10 +205,10 @@
       </svg>
     );
 
-    const UserOutlineIcon = () => (
+    const SettingsIcon = () => (
       <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" class="h-4 w-4 shrink-0" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-        <circle cx="12" cy="7" r="4"></circle>
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
       </svg>
     );
 
@@ -593,7 +593,7 @@
           {/* ======================================================== */}
           <div class={`w-[260px] h-full flex flex-col justify-between shrink-0 select-none ${isDark ? 'bg-chatgpt-darkSidebar text-gray-200 border-r border-[#2A2B32]' : 'bg-chatgpt-lightSidebar text-gray-800 border-r border-chatgpt-lightBorder'}`}>
             {/* Top Section */}
-            <div class="p-2 flex flex-col h-[calc(100%-140px)]">
+            <div class="p-2 flex-1 min-h-0 flex flex-col">
               {/* + New chat button */}
               <button
                 onClick={handleNewChat}
@@ -667,22 +667,8 @@
               </div>
             </div>
 
-            {/* Bottom Controls / User Profile Bar matching screenshot */}
+            {/* Bottom Controls */}
             <div class={`p-2 space-y-0.5 border-t ${isDark ? 'border-white/20 bg-chatgpt-darkSidebar' : 'border-gray-200 bg-chatgpt-lightSidebar'}`}>
-              {/* Upgrade to Plus with yellow NEW badge (exact screenshot element) */}
-              <div
-                onClick={() => { setActiveModalTab("memory"); setShowModal(true); }}
-                class={`flex items-center justify-between px-3 py-2 text-xs rounded-md transition cursor-pointer ${isDark ? 'text-gray-200 hover:bg-[#2A2B32]' : 'text-gray-700 hover:bg-gray-200/60'}`}
-              >
-                <div class="flex items-center gap-3">
-                  <UserOutlineIcon />
-                  <span class="font-normal text-xs">Upgrade to Plus</span>
-                </div>
-                <span class="bg-[#FAE69E] text-black font-bold text-[10px] px-1.5 py-0.5 rounded tracking-wider shadow-sm">
-                  NEW
-                </span>
-              </div>
-
               {/* Files & Knowledge Manager */}
               <div
                 onClick={() => { setActiveModalTab("documents"); setShowModal(true); }}
@@ -695,6 +681,17 @@
                 <span class={`font-mono text-[10px] px-1.5 py-0.5 rounded font-semibold ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-700'}`}>
                   {uploadedDocs.length}
                 </span>
+              </div>
+
+              {/* Settings & Memory */}
+              <div
+                onClick={() => { setActiveModalTab("memory"); setShowModal(true); }}
+                class={`flex items-center justify-between px-3 py-2 text-xs rounded-md transition cursor-pointer ${isDark ? 'text-gray-200 hover:bg-[#2A2B32]' : 'text-gray-700 hover:bg-gray-200/60'}`}
+              >
+                <div class="flex items-center gap-3">
+                  <SettingsIcon />
+                  <span class="font-normal text-xs">Settings & Memory</span>
+                </div>
               </div>
 
               {/* Theme Toggle (Dark / Light) */}
@@ -710,18 +707,6 @@
                   {theme}
                 </span>
               </div>
-
-              {/* User Profile Row: Avatar + Email + 3-dots */}
-              <div
-                onClick={() => { setActiveModalTab("user"); setShowModal(true); }}
-                class={`flex items-center justify-between px-3 py-2 text-xs rounded-md transition cursor-pointer ${isDark ? 'text-gray-200 hover:bg-[#2A2B32]' : 'text-gray-700 hover:bg-gray-200/60'}`}
-              >
-                <div class="flex items-center gap-2.5 truncate">
-                  <UserAvatar email={userEmail} />
-                  <span class="truncate font-normal text-xs">{userEmail}</span>
-                </div>
-                <span class="text-gray-400 hover:text-white text-sm font-bold tracking-widest pl-1">•••</span>
-              </div>
             </div>
           </div>
 
@@ -732,13 +717,8 @@
             {/* Conversation Flow or Empty Home Screen */}
             <div class={`flex-1 overflow-y-auto flex flex-col justify-between ${isDark ? 'custom-scrollbar custom-scrollbar-dark' : 'custom-scrollbar custom-scrollbar-light'}`}>
               {messages.length === 0 ? (
-                /* EMPTY STATE: Exactly matching screenshot with 3 columns */
-                <div class="max-w-3xl w-full mx-auto px-4 pt-16 pb-32 flex flex-col items-center justify-center my-auto">
-                  {/* ChatGPT Center Title */}
-                  <h1 class={`text-[36px] font-semibold mb-10 tracking-tight select-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    ChatGPT
-                  </h1>
-
+                /* EMPTY STATE: 3 columns centered without the removed header */
+                <div class="max-w-3xl w-full mx-auto px-4 pt-10 pb-32 flex flex-col items-center justify-center my-auto">
                   {/* 3 Columns: Examples, Capabilities, Limitations */}
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 w-full text-center">
                     {/* 1. Examples Column */}
