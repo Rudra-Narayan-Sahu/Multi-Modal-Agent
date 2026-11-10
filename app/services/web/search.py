@@ -51,23 +51,32 @@ class WebSearchService:
             return None
 
     def search_duckduckgo(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
-        """Search via DuckDuckGo as reliable fallback."""
-        try:
-            results = []
-            with DDGS() as ddgs:
-                ddg_results = ddgs.text(query, max_results=max_results)
-                for item in ddg_results:
-                    results.append({
-                        "title": item.get("title", ""),
-                        "url": item.get("href", ""),
-                        "snippet": item.get("body", ""),
-                        "score": 0.8,
-                        "source": "duckduckgo"
-                    })
-            return results
-        except Exception as e:
-            logfire.warning(f"DuckDuckGo search failed: {str(e)}")
-            return []
+        """Search via DuckDuckGo as reliable fallback with query simplification retry."""
+        clean_query = query.strip(' "\'')
+        queries_to_try = [clean_query]
+        words = clean_query.split()
+        if len(words) > 6:
+            queries_to_try.append(" ".join(words[:6]))
+
+        for q in queries_to_try:
+            try:
+                results = []
+                with DDGS() as ddgs:
+                    ddg_results = list(ddgs.text(q, max_results=max_results))
+                    for item in ddg_results:
+                        results.append({
+                            "title": item.get("title", ""),
+                            "url": item.get("href", ""),
+                            "snippet": item.get("body", ""),
+                            "score": 0.8,
+                            "source": "duckduckgo"
+                        })
+                if results:
+                    return results
+            except Exception as e:
+                logfire.warning(f"DuckDuckGo search attempt failed for query '{q}': {str(e)}")
+
+        return []
 
     def search(self, query: str, max_results: int = 5) -> Dict[str, Any]:
         """

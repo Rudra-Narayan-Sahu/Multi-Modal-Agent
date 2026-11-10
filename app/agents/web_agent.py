@@ -44,6 +44,7 @@ def web_node(state: AgentState) -> Dict[str, Any]:
             }
 
         # 3. Format and preserve verified source citations
+        from urllib.parse import urlparse
         citations: List[Dict[str, Any]] = []
         formatted_snippets = []
         for i, item in enumerate(raw_results, 1):
@@ -51,11 +52,13 @@ def web_node(state: AgentState) -> Dict[str, Any]:
             url = item.get("url", "")
             snippet = item.get("snippet", "")
             score = item.get("score", 0.8)
+            domain = urlparse(url).netloc if url else ""
 
             citations.append({
                 "type": "web",
                 "title": title,
                 "url": url,
+                "domain": domain,
                 "score": score,
                 "snippet": snippet[:150] + "..." if len(snippet) > 150 else snippet
             })

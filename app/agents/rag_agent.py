@@ -49,8 +49,10 @@ def rag_node(state: AgentState) -> Dict[str, Any]:
 
             citations.append({
                 "type": "document",
+                "title": f"{file_name} (Chunk #{chunk_idx})",
                 "file_name": file_name,
                 "chunk_index": chunk_idx,
+                "domain": "Knowledge Base",
                 "score": round(score, 4),
                 "preview": text[:150] + "..." if len(text) > 150 else text
             })
