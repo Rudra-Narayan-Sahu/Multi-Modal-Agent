@@ -31,11 +31,11 @@ def handle_summarization(
             "You are an executive research summarizer. "
             "Synthesize an organized, high-density summary of the provided documents. "
             "Structure your response with the following sections:\n"
-            "1. 📌 **Executive Overview**\n"
-            "2. 💡 **Key Findings & Contributions**\n"
-            "3. ⚙️ **Methodology / Technical Architecture**\n"
-            "4. 📊 **Evaluation & Results (if mentioned)**\n"
-            "5. 🎯 **Takeaway & Conclusions**\n"
+            "1. **Executive Overview**\n"
+            "2. **Key Findings & Contributions**\n"
+            "3. **Methodology / Technical Architecture**\n"
+            "4. **Evaluation & Results (if mentioned)**\n"
+            "5. **Takeaway & Conclusions**\n"
             "Cite sources where applicable."
         )
 
